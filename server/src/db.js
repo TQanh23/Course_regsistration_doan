@@ -23,3 +23,6 @@ pool.getConnection()
   });
 
 module.exports = pool;
+// Path: server/src/routes/authRoutes.js
+// Example usage in route files
+const { authenticate, authorize } = require('../middleware/authMiddleware'); 
