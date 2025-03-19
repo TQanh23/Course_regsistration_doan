@@ -8,8 +8,9 @@ router.get('/profile', authenticate, (req, res) => {
 
 // Route with role-based authorization
 router.post('/courses', authenticate, authorize(['admin', 'teacher']), (req, res) => {
-  // Only admins and teachers can create courses
+  // Only admins can create courses
   // Route handler code...
+  
 });
 
 // Student-specific route
