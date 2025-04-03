@@ -9,10 +9,17 @@ import {
   StatusBar,
 } from 'react-native';
 import Icon from '@expo/vector-icons/Ionicons';
+import { useNavigation } from '@react-navigation/native'; // Thêm import này
 
 const App = () => {
+  const navigation = useNavigation(); // Thêm đoạn này để lấy navigation object
   const [selectedCourse, setSelectedCourse] = useState<string | null>(null);
   const [registrationType, setRegistrationType] = useState<'NEW' | 'RETAKE' | 'IMPROVE'>('RETAKE');
+
+  // Hàm để quay lại màn hình chính
+  const goBack = () => {
+    navigation.goBack();
+  };
 
   const toggleCourseSelection = (courseId: string) => {
     setSelectedCourse(currentSelected => 
@@ -29,13 +36,20 @@ const App = () => {
       
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton}>
-          <Icon name="arrow-back" size={24} color="white" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Đăng ký học phần</Text>
-        <TouchableOpacity style={styles.notificationButton}>
-          <Icon name="notifications-outline" size={24} color="white" />
-        </TouchableOpacity>
+        <View style={styles.headerContent}>
+          <TouchableOpacity 
+            style={styles.backButton}
+            onPress={goBack}
+          >
+            <Icon name="arrow-back" size={24} color="#fff" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Đăng ký học phần</Text>
+          <TouchableOpacity style={styles.notificationButton}>
+            <Icon name="notifications-outline" size={24} color="#fff" />
+          </TouchableOpacity>
+        </View>
+        <View style={styles.whiteSpace} />
+
       </View>
 
       {/* Semester Selector */}
@@ -89,9 +103,12 @@ const App = () => {
         </TouchableOpacity>
       </View>
 
-      {/* Course List */}
-      <Text style={styles.listTitle}>Môn học phần đang chờ đăng ký</Text>
+      {/* Chuyển ScrollView lên trên phần tiêu đề để bao gồm cả tiêu đề */}
       <ScrollView style={styles.courseList}>
+        {/* Đưa tiêu đề vào trong ScrollView */}
+        <Text style={styles.listTitle}>Môn học phần đang chờ đăng ký</Text>
+        
+
         {/* Course List Section */}
         <View>
           <View style={styles.tableHeader}>
@@ -195,11 +212,15 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   header: {
-    backgroundColor: '#0052CC',
-    padding: 16,
+
+    backgroundColor: '#0066CC',
+  },
+  headerContent: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    padding: 16,
+
   },
   backButton: {
     padding: 4,
@@ -218,6 +239,14 @@ const styles = StyleSheet.create({
     width: 40,
     alignItems: 'flex-end',
   },
+
+  whiteSpace: {
+    height: 20,
+    backgroundColor: '#ffffff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+  },
+
   semesterSelector: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -266,9 +295,12 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginHorizontal: 16,
     marginBottom: 16,
+    marginTop: 8, // Thêm marginTop để có khoảng cách với phần trên
   },
   courseList: {
     flex: 1,
+    // Không cần paddingTop nếu đã có marginTop trong listTitle
+
   },
   tableHeader: {
     flexDirection: 'row',
