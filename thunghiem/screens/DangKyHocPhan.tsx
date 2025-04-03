@@ -49,6 +49,7 @@ const App = () => {
           </TouchableOpacity>
         </View>
         <View style={styles.whiteSpace} />
+
       </View>
 
       {/* Semester Selector */}
@@ -107,6 +108,7 @@ const App = () => {
         {/* Đưa tiêu đề vào trong ScrollView */}
         <Text style={styles.listTitle}>Môn học phần đang chờ đăng ký</Text>
         
+
         {/* Course List Section */}
         <View>
           <View style={styles.tableHeader}>
@@ -210,6 +212,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   header: {
+
     backgroundColor: '#0066CC',
   },
   headerContent: {
@@ -217,6 +220,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 16,
+
   },
   backButton: {
     padding: 4,
@@ -235,12 +239,14 @@ const styles = StyleSheet.create({
     width: 40,
     alignItems: 'flex-end',
   },
+
   whiteSpace: {
     height: 20,
     backgroundColor: '#ffffff',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
   },
+
   semesterSelector: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -294,6 +300,7 @@ const styles = StyleSheet.create({
   courseList: {
     flex: 1,
     // Không cần paddingTop nếu đã có marginTop trong listTitle
+
   },
   tableHeader: {
     flexDirection: 'row',
