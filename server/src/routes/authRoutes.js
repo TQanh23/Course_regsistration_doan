@@ -1,20 +1,12 @@
-// Example usage in route files
-const { authenticate, authorize } = require('../middleware/authMiddleware');
+const express = require('express');
+const authController = require('../controllers/authController');
 
-// Protected route requiring authentication
-router.get('/profile', authenticate, (req, res) => {
-  res.json({ user: req.user });
-});
+const router = express.Router();
 
-// Route with role-based authorization
-router.post('/courses', authenticate, authorize(['admin', 'teacher']), (req, res) => {
-  // Only admins can create courses
-  // Route handler code...
-  
-});
+router.get('/login', authController.getLoginForm);
+router.post('/login', authController.login);
+router.get('/register', authController.getRegisterForm);
+router.post('/register', authController.registerStudent);
+router.get('/logout', authController.logout);
 
-// Student-specific route
-router.post('/course-registration', authenticate, authorize(['student']), (req, res) => {
-  // Only students can register for courses
-  // Route handler code...
-});
+module.exports = router;
