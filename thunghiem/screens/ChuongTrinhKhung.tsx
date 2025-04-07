@@ -2,15 +2,33 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
+
+// Define your stack parameter list
+type RootStackParamList = {
+  TrangChuScreen: undefined;
+  ChuongTrinhKhung: undefined;
+  ThongBao: undefined;
+  // Other screens...
+};
+
+// Create a typed navigation prop
+type ChuongTrinhKhungNavigationProp = StackNavigationProp<RootStackParamList, 'ChuongTrinhKhung'>;
 
 const ChuongTrinhKhung = () => {
-  const navigation = useNavigation();
+  // Use typed navigation
+  const navigation = useNavigation<ChuongTrinhKhungNavigationProp>();
   const [expandedSemester, setExpandedSemester] = useState<number | null>(null); // Trạng thái mở/đóng của học kỳ
   const [expandedSemesters, setExpandedSemesters] = useState<number[]>([]); // Mảng các học kỳ đang mở
 
+  // Handle back navigation
   const handleBackPress = () => {
-    // Quay lại màn hình trước đó
     navigation.goBack();
+  };
+
+  // Add navigation to ThongBao screen
+  const navigateToThongBao = () => {
+    navigation.navigate('ThongBao');
   };
 
   const semesters = [
@@ -139,7 +157,7 @@ const ChuongTrinhKhung = () => {
         <Text style={styles.headerTitle}>Chương trình khung</Text>
 
         {/* Nút thông báo */}
-        <TouchableOpacity style={styles.iconButton}>
+        <TouchableOpacity onPress={navigateToThongBao} style={styles.iconButton}>
           <Icon name="notifications-outline" size={24} color="#fff" />
         </TouchableOpacity>
       </View>

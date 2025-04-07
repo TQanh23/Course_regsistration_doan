@@ -2,8 +2,29 @@ import React from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
+import { useNavigation } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
+
+// Define the navigation param list type
+export type RootStackParamList = {
+  TrangChuScreen: undefined;
+  ThongTinCaNhan: undefined;
+  ThongBao: undefined;
+  TrangChuTab: { screen: string };
+  // Add other screens as needed
+};
+
+// Define the navigation prop type for this screen
+type ThongTinCaNhanNavigationProp = StackNavigationProp<RootStackParamList, 'ThongTinCaNhan'>;
 
 const ThongTinCaNhan = () => {
+  const navigation = useNavigation<ThongTinCaNhanNavigationProp>();
+  
+  // Updated navigation function - simplified to navigate within the same stack
+  const navigateToThongBao = () => {
+    navigation.navigate('ThongBao');
+  };
+  
   // Mock data
   const userInfo = {
     name: "Lâ Minh Khánh",
@@ -31,7 +52,10 @@ const ThongTinCaNhan = () => {
             />
           </View>
           <Text style={styles.headerTitle}>Thông tin sinh viên</Text>
-          <TouchableOpacity style={styles.notificationButton}>
+          <TouchableOpacity 
+            style={styles.notificationButton}
+            onPress={navigateToThongBao}
+          >
             <Icon 
               name="notifications-outline"
               size={28} 
