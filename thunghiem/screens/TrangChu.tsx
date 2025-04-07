@@ -11,6 +11,9 @@ type RootStackParamList = {
   TrangChu: undefined;
   ChuongTrinhKhung: undefined;
   DangKyHocPhan: undefined; // Thêm màn hình DangKyHocPhan
+  DanhSachMonHocdangky: undefined; // Add this line
+  Calendar: undefined; // Add this line for the Calendar screen
+  ThongBao: undefined; // Add this line for ThongBao screen
 };
 
 type NavigationProps = NavigationProp<RootStackParamList>;
@@ -205,6 +208,21 @@ const TrangChu = () => {
     navigation.navigate('DangKyHocPhan');
   };
 
+  // Hàm xử lý chuyển đến màn hình danh sách môn học đã đăng ký
+  const navigateToDanhSachMonHocdangky = () => {
+    navigation.navigate('DanhSachMonHocdangky');
+  };
+
+  // Hàm xử lý chuyển đến màn hình thời khóa biểu
+  const navigateToCalendar = () => {
+    navigation.navigate('Calendar');
+  };
+
+  // Hàm xử lý chuyển đến màn hình thông báo
+  const navigateToThongBao = () => {
+    navigation.navigate('ThongBao');
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
@@ -217,7 +235,10 @@ const TrangChu = () => {
             />
           </View>
           <Text style={styles.headerTitle}>Welcome to HUCE</Text>
-          <TouchableOpacity style={styles.notificationButton}>
+          <TouchableOpacity 
+            style={styles.notificationButton}
+            onPress={navigateToThongBao}
+          >
             <Icon 
               name="notifications-outline"
               size={28} 
@@ -305,7 +326,10 @@ const TrangChu = () => {
         <View style={styles.featureGrid}>
           <View style={styles.featureRow}>
             <View style={styles.featureItem}>
-              <TouchableOpacity style={styles.iconButton}>
+              <TouchableOpacity 
+                style={styles.iconButton}
+                onPress={navigateToCalendar}
+              >
                 <Icon name="calendar-outline" size={60} color="#0066CC" />
               </TouchableOpacity>
               <Text style={styles.featureText}>Thời khóa biểu</Text>
@@ -332,7 +356,10 @@ const TrangChu = () => {
               <Text style={styles.featureText}>Đăng ký học phần</Text>
             </View>
             <View style={styles.featureItem}>
-              <TouchableOpacity style={styles.iconButton}>
+              <TouchableOpacity 
+                style={styles.iconButton}
+                onPress={navigateToDanhSachMonHocdangky}
+              >
                 <Icon name="list" size={60} color="#0066CC" />
               </TouchableOpacity>
               <Text style={styles.featureText}>Danh sách môn học {"\n"} đã đăng ký</Text>
