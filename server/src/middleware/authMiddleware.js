@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
-
+const { getRepository } = require('typeorm');
+const authConfig = require('../config/auth');
 /**
  * Authentication middleware to verify user JWT tokens
  * @param {Object} req - Express request object

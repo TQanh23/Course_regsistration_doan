@@ -67,12 +67,12 @@ module.exports = new EntitySchema({
   relations: {
     registrations: {
       type: 'one-to-many',
-      target: 'Registration',
+      target: 'registrations',
       inverseSide: 'student'
     },
     program: {  // Added relation to academic_programs
       type: 'many-to-one',
-      target: 'AcademicProgram',
+      target: 'academic_programs',
       joinColumn: {
         name: 'program_id'
       }

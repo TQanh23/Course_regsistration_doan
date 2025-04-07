@@ -1,7 +1,7 @@
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const { Admin } = require('../models');
-const config = require('../config/config');
+const config = require('../config/');
 
 class AdminAuthService {
     /**
