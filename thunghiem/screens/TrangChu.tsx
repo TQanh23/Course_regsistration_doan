@@ -1,8 +1,76 @@
 import React from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, Image, TouchableOpacity, ScrollView, StyleProp, ViewStyle, TextStyle } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
 import CalendarStrip from 'react-native-calendar-strip';
+import { useNavigation } from '@react-navigation/native';
+import { NavigationProp } from '@react-navigation/native';
+
+// Định nghĩa kiểu dữ liệu cho navigation
+type RootStackParamList = {
+  TrangChu: undefined;
+  ChuongTrinhKhung: undefined;
+  DangKyHocPhan: undefined; // Thêm màn hình DangKyHocPhan
+};
+
+type NavigationProps = NavigationProp<RootStackParamList>;
+
+// Định nghĩa lại interface CalendarStripProps
+interface CalendarStripProps {
+  style?: StyleProp<ViewStyle>;
+  innerStyle?: StyleProp<ViewStyle>;
+  calendarColor?: string;
+  startingDate?: Date;
+  selectedDate?: Date;
+  onDateSelected?: (date: Date) => void;
+  showMonth?: boolean;
+  showDayName?: boolean;
+  showDayNumber?: boolean;
+  scrollable?: boolean;
+  iconContainer?: StyleProp<ViewStyle>;
+  calendarHeaderStyle?: StyleProp<ViewStyle>;
+  calendarHeaderFormat?: string;
+  dateNameStyle?: StyleProp<TextStyle>;
+  dateNumberStyle?: StyleProp<TextStyle>;
+  highlightDateNameStyle?: StyleProp<TextStyle>;
+  highlightDateNumberStyle?: StyleProp<TextStyle>;
+  styleWeekend?: boolean;
+  daySelectionAnimation?: {
+    type: string;
+    duration?: number;
+    borderWidth?: number;
+    borderHighlightColor?: string;
+    highlightColor?: string;
+    animType?: string;
+    animUpdateType?: string;
+    animProperty?: string;
+    animSpringDamping?: number;
+  };
+  customDatesStyles?: Array<{
+    startDate: Date;
+    dateContainerStyle?: StyleProp<ViewStyle>;
+    dateNameStyle?: StyleProp<TextStyle>;
+    dateNumberStyle?: StyleProp<TextStyle>;
+  }>;
+  dayComponentHeight?: number;
+  upperCaseDays?: boolean;
+  shouldAllowFontScaling?: boolean;
+  useIsoWeekday?: boolean;
+  minDate?: Date;
+  maxDate?: Date;
+  onWeekChanged?: (start: Date) => void;
+  locale?: {
+    name: string;
+    config: {
+      dayNames: string[];
+      dayNamesShort: string[];
+      monthNames: string[];
+      monthNamesShort: string[];
+    };
+  };
+  disabledDateNameStyle?: StyleProp<TextStyle>;
+  disabledDateNumberStyle?: StyleProp<TextStyle>;
+}
 
 // Thêm hàm tính toán ngày bắt đầu tuần
 const getWeekStartDate = (date: Date) => {
@@ -13,11 +81,11 @@ const getWeekStartDate = (date: Date) => {
 };
 
 const TrangChu = () => {
+  // Lấy navigation object
+  const navigation = useNavigation<NavigationProps>();
+
   const [selectedDate, setSelectedDate] = React.useState(new Date());
   const [startingDate, setStartingDate] = React.useState(() => getWeekStartDate(new Date())); // Khởi tạo startingDate là Chủ nhật của tuần hiện tại
-
-  // Mảng tên ngày tiếng Việt
-  const vietnameseDayNames = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
   
   // Mảng tên ngày đầy đủ để hiển thị ở header
   const fullDayNames = ['Chủ nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
@@ -25,14 +93,6 @@ const TrangChu = () => {
   // Hàm format ngày tháng cho header
   const formatHeaderDate = (date: Date) => {
     const dayName = fullDayNames[date.getDay()];
-    return `${dayName}, ngày ${date.getDate()} tháng ${date.getMonth() + 1} năm ${date.getFullYear()}`;
-  };
-
-  // Format ngày tháng năm tiếng Việt
-  const formatDateToVietnamese = (dateString: string) => {
-    const date = new Date(dateString);
-    const days = ['Chủ nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
-    const dayName = days[date.getDay()];
     return `${dayName}, ngày ${date.getDate()} tháng ${date.getMonth() + 1} năm ${date.getFullYear()}`;
   };
 
@@ -79,13 +139,11 @@ const TrangChu = () => {
             {schedule.subjectCode} - {schedule.subjectName}
           </Text>
           <View style={styles.scheduleDetail}>
-            <View style={styles.dot} />
             <Text style={styles.detailText}>
               Sáng thứ sáu, {schedule.startTime} - {schedule.endTime}, {schedule.room}
             </Text>
           </View>
           <View style={styles.scheduleDetail}>
-            <View style={styles.dot} />
             <Text style={styles.detailText}>
               Giảng viên: {schedule.teacher}
             </Text>
@@ -99,15 +157,6 @@ const TrangChu = () => {
   const handleDateSelected = (date: Date) => {
     const newDate = new Date(date);
     setSelectedDate(newDate);
-    
-    // Không cập nhật startingDate khi chọn ngày mới
-    // Điều này giữ cho tuần hiển thị không bị thay đổi
-  };
-
-  // Hàm riêng để thay đổi tuần hiển thị (có thể thêm nút để chuyển tuần)
-  const changeWeekView = (date: Date) => {
-    setStartingDate(getWeekStartDate(date));
-    setSelectedDate(date);
   };
 
   // Thêm hàm getCustomDatesStyles vào trong component TrangChu
@@ -144,6 +193,16 @@ const TrangChu = () => {
     });
     
     return styles;
+  };
+
+  // Hàm xử lý chuyển đến màn hình chương trình khung
+  const navigateToChuongTrinhKhung = () => {
+    navigation.navigate('ChuongTrinhKhung');
+  };
+
+  // Hàm xử lý chuyển đến màn hình đăng ký học phần
+  const navigateToDangKyHocPhan = () => {
+    navigation.navigate('DangKyHocPhan');
   };
 
   return (
@@ -252,7 +311,11 @@ const TrangChu = () => {
               <Text style={styles.featureText}>Thời khóa biểu</Text>
             </View>
             <View style={styles.featureItem}>
-              <TouchableOpacity style={styles.iconButton}>
+              {/* Thêm onPress vào button này */}
+              <TouchableOpacity 
+                style={styles.iconButton}
+                onPress={navigateToChuongTrinhKhung}
+              >
                 <Icon name="book" size={60} color="#0066CC" />
               </TouchableOpacity>
               <Text style={styles.featureText}>Chương trình khung</Text>
@@ -260,7 +323,10 @@ const TrangChu = () => {
           </View>
           <View style={styles.featureRow}>
             <View style={styles.featureItem}>
-              <TouchableOpacity style={styles.iconButton}>
+              <TouchableOpacity 
+                style={styles.iconButton}
+                onPress={navigateToDangKyHocPhan}
+              >
                 <Icon name="create" size={60} color="#0066CC" />
               </TouchableOpacity>
               <Text style={styles.featureText}>Đăng ký học phần</Text>
@@ -269,7 +335,7 @@ const TrangChu = () => {
               <TouchableOpacity style={styles.iconButton}>
                 <Icon name="list" size={60} color="#0066CC" />
               </TouchableOpacity>
-              <Text style={styles.featureText}>Danh sách môn học đã đăng ký</Text>
+              <Text style={styles.featureText}>Danh sách môn học {"\n"} đã đăng ký</Text>
             </View>
           </View>
         </View>
@@ -425,13 +491,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginTop: 4,
-  },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#4CAF50',
-    marginRight: 8,
   },
   detailText: {
     fontSize: 14,
