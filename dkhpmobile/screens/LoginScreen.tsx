@@ -12,6 +12,9 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { MaterialIcons } from '@expo/vector-icons';
+import { authService } from '../src/api/services/auth-service';
+import { useAuth } from '../src/api/context/auth-context';
+import { LoginResponse } from '../src/api/types/auth-types';
 
 const { width } = Dimensions.get('window');
 
@@ -86,6 +89,19 @@ const LoginScreen = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const isButtonActive = username.length > 0 && password.length > 0;
+
+  const { login } = useAuth();
+
+  // Modify the login button press handler:
+  const handleLogin = async () => {
+    try {
+      const response = await authService.login({ username, password });
+      login(response); // This comes from useAuth hook
+      // Navigate to main screen or handle success
+    } catch (error) {
+      // Handle error (show error message)
+    }
+  };
 
   useEffect(() => {
     // Background fade in first
@@ -266,3 +282,7 @@ const styles = StyleSheet.create({
 });
 
 export default LoginScreen;
+
+function login(response: any) {
+  throw new Error("Function not implemented.");
+}
