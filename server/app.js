@@ -1,78 +1,69 @@
+// app.js
 const express = require('express');
-const { createConnection } = require('typeorm');
 const path = require('path');
-const cookieParser = require('cookie-parser'); // NEW
-const courseRoutes = require('./routes/courseRoutes');
-const studentRoutes = require('./routes/studentRoutes');
-const registrationRoutes = require('./routes/registrationRoutes');
-const authRoutes = require('./routes/authRoutes'); // NEW
-const adminRoutes = require('./routes/adminRoutes'); // NEW
-const dbConfig = require('./config/database');
-const { isAuthenticated } = require('./middlewares/authMiddleware'); // NEW
+const cors = require('cors');
+const cookieParser = require('cookie-parser');
+require('dotenv').config();
 
-// Initialize express app
+// Import routes
+const authRoutes = require('./src/routes/authRoutes');
+const courseRoutes = require('./src/routes/courseRoutes');
+const studentRoutes = require('./src/routes/studentRoutes');
+const registrationRoutes = require('./src/routes/registrationRoutes');
+const adminRoutes = require('./src/routes/adminRoutes');
+
+// Database connection test
+const pool = require('./src/config/db');
+
+// Test database connection
+pool.getConnection()
+  .then(connection => {
+    console.log('Database connection established successfully!');
+    connection.release();
+  })
+  .catch(err => {
+    console.error('Database connection failed:', err.message);
+    process.exit(1); // Exit if database connection fails
+  });
+
 const app = express();
-const PORT = process.env.PORT || 3000;
-
-// Set up view engine
-app.set('view engine', 'ejs');
-app.set('views', path.join(__dirname, 'views'));
 
 // Middleware
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use(express.static(path.join(__dirname, 'public')));
-app.use(cookieParser()); // NEW: Parse cookies
+app.use(cors({
+  origin: process.env.CORS_ORIGIN || '*',
+  credentials: true
+}));
+app.use(cookieParser()); // Parse cookies
+app.use(express.json()); // Parse JSON bodies
+app.use(express.urlencoded({ extended: true })); // Parse URL-encoded bodies
+app.use(express.static(path.join(__dirname, 'public'))); // Serve static files
 
-// Authentication routes (public)
-app.use('/auth', authRoutes);
+// API Routes
+app.use('/api/auth', authRoutes);
+app.use('/api/courses', courseRoutes);
+app.use('/api/students', studentRoutes);
+app.use('/api/registrations', registrationRoutes);
+app.use('/api/admin', adminRoutes);
 
-// Protected routes
-app.use('/courses', isAuthenticated, courseRoutes);
-app.use('/students', isAuthenticated, studentRoutes);
-app.use('/registrations', isAuthenticated, registrationRoutes);
-app.use('/admin', adminRoutes); // Already has middleware in its router
-
-// Home route
+// Default route
 app.get('/', (req, res) => {
-  // Check if user is logged in
-  const token = req.cookies.auth_token;
-  if (token) {
-    // Try to verify token
-    try {
-      const jwt = require('jsonwebtoken');
-      const authConfig = require('./config/auth');
-      const decoded = jwt.verify(token, authConfig.jwtSecret);
-      
-      // Redirect based on role
-      if (decoded.role === 'admin') {
-        return res.redirect('/admin/dashboard');
-      } else {
-        return res.redirect('/students/dashboard');
-      }
-    } catch (error) {
-      // Invalid token, continue to login page
-    }
-  }
-  
-  // No token or invalid token, render login page
-  res.redirect('/auth/login');
+  res.send('Course Registration API is running!');
 });
 
-const cors = require('cors');
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({
+    success: false,
+    message: 'Something went wrong!',
+    error: process.env.NODE_ENV === 'development' ? err.message : undefined
+  });
+});
 
-app.use(cors({
-  origin: '*', // More restrictive in production
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
+// Start server
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
+});
 
-// Database connection and server start
-createConnection(dbConfig)
-  .then(() => {
-    console.log('Connected to database');
-    app.listen(PORT, () => {
-      console.log(`Server is running on port ${PORT}`);
-    });
-  })
-  .catch((error) => console.log('Error connecting to database:', error));
+module.exports = app;

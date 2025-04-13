@@ -1,59 +1,138 @@
+// middlewares/authMiddleware.js
 const jwt = require('jsonwebtoken');
-const { getRepository } = require('typeorm');
-const authConfig = require('../config/auth');
+const pool = require('../config/db');
+
 /**
- * Authentication middleware to verify user JWT tokens
- * @param {Object} req - Express request object
- * @param {Object} res - Express response object
- * @param {Function} next - Express next middleware function
+ * Middleware to authenticate JWT token
  */
-const authenticate = (req, res, next) => {
+exports.authenticateToken = async (req, res, next) => {
   try {
-    // Get token from authorization header
+    // Get token from Authorization header
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ message: 'Access denied. No token provided.' });
+      return res.status(401).json({
+        success: false,
+        message: 'Access denied. No token provided.'
+      });
     }
-
+    
     const token = authHeader.split(' ')[1];
     
     // Verify token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
     
-    // Add user data to request object
-    req.user = decoded;
+    // Check if user exists in the appropriate table based on role
+    let query;
+    if (decoded.role === 'admin') {
+      query = 'SELECT id, username FROM admins WHERE id = ?';
+    } else if (decoded.role === 'student') {
+      query = 'SELECT id, username FROM students WHERE id = ?';
+    } else {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid token. Unknown role.'
+      });
+    }
+    
+    const [rows] = await pool.query(query, [decoded.id]);
+    
+    if (rows.length === 0) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid token. User not found.'
+      });
+    }
+    
+    // Attach user info to request
+    req.user = {
+      id: decoded.id,
+      username: decoded.username,
+      role: decoded.role
+    };
+    
     next();
   } catch (error) {
-    if (error instanceof jwt.TokenExpiredError) {
-      return res.status(401).json({ message: 'Token expired' });
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid token.'
+      });
     }
     
-    if (error instanceof jwt.JsonWebTokenError) {
-      return res.status(401).json({ message: 'Invalid token' });
+    if (error.name === 'TokenExpiredError') {
+      return res.status(401).json({
+        success: false,
+        message: 'Token expired.'
+      });
     }
     
-    return res.status(500).json({ message: 'Internal server error' });
+    console.error('Authentication middleware error:', error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Server error during authentication'
+    });
   }
 };
 
 /**
- * Role-based authorization middleware
- * @param {Array} allowedRoles - Array of roles allowed to access the route
- * @returns {Function} Middleware function
+ * Middleware to check if user is admin
  */
-const authorize = (allowedRoles) => {
-  return (req, res, next) => {
-    if (!req.user) {
-      return res.status(401).json({ message: 'User not authenticated' });
-    }
-
-    const { role } = req.user;
-    if (!allowedRoles.includes(role)) {
-      return res.status(403).json({ message: 'Access denied. Insufficient permissions.' });
-    }
-
-    next();
-  };
+exports.isAdmin = (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({
+      success: false,
+      message: 'Authentication required'
+    });
+  }
+  
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({
+      success: false,
+      message: 'Access denied. Admin privileges required.'
+    });
+  }
+  
+  next();
 };
 
-module.exports = { authenticate, authorize };
+/**
+ * Middleware to check if user is student
+ */
+exports.isStudent = (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({
+      success: false,
+      message: 'Authentication required'
+    });
+  }
+  
+  if (req.user.role !== 'student') {
+    return res.status(403).json({
+      success: false,
+      message: 'Access denied. Student privileges required.'
+    });
+  }
+  
+  next();
+};
+
+/**
+ * Middleware to check if user is either admin or student
+ */
+exports.isAdminOrStudent = (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({
+      success: false,
+      message: 'Authentication required'
+    });
+  }
+  
+  if (req.user.role !== 'admin' && req.user.role !== 'student') {
+    return res.status(403).json({
+      success: false,
+      message: 'Access denied. Insufficient privileges.'
+    });
+  }
+  
+  next();
+};

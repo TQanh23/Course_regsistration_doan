@@ -1,11 +1,11 @@
 const express = require('express');
 const studentController = require('../controllers/studentController');
-const { authenticate, isStudent } = require('../middleware/authMiddleware');
+const { authenticateToken, isStudent } = require('../middleware/authMiddleware');
 
 const router = express.Router();
 
 // Apply authentication and student role check to all routes
-router.use(authenticate);
+router.use(authenticateToken);
 router.use(isStudent);
 
 // Get all available courses

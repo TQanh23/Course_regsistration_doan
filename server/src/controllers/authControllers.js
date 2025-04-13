@@ -1,134 +1,311 @@
-const { getRepository } = require('typeorm');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-const authConfig = require('../config/auth');
+const pool = require('../config/db');
 
-// Display login form
-exports.getLoginForm = (req, res) => {
-  res.render('auth/login', { error: null });
-};
-
-// Process login
+/**
+ * API login for both admin and student users
+ */
 exports.login = async (req, res) => {
   const { username, password, role } = req.body;
   
+  if (!username || !password || !role) {
+    return res.status(400).json({
+      success: false,
+      message: 'Username, password, and role are required'
+    });
+  }
+  
+  if (role !== 'admin' && role !== 'student') {
+    return res.status(400).json({
+      success: false,
+      message: 'Invalid role selected'
+    });
+  }
+  
   try {
     let user;
-    let repository;
+    let query;
+    let passwordField;
     
-    // Determine which repository to use based on role
+    // Different queries based on role
     if (role === 'admin') {
-      repository = getRepository('Admin');
-    } else if (role === 'student') {
-      repository = getRepository('Student');
+      query = 'SELECT * FROM admins WHERE username = ?';
+      passwordField = 'password_admin';
     } else {
-      return res.render('auth/login', { 
-        error: 'Invalid role selected' 
-      });
+      query = 'SELECT * FROM students WHERE username = ?';
+      passwordField = 'password_student';
     }
     
     // Find user
-    user = await repository.findOne({ where: { username } });
+    const [rows] = await pool.query(query, [username]);
     
-    if (!user) {
-      return res.render('auth/login', { 
-        error: 'Invalid username or password' 
+    if (rows.length === 0) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid username or password'
       });
     }
+    
+    user = rows[0];
     
     // Check password
-    const isValidPassword = await bcrypt.compare(password, user.password);
+    const isValidPassword = await bcrypt.compare(password, user[passwordField]);
     
     if (!isValidPassword) {
-      return res.render('auth/login', { 
-        error: 'Invalid username or password' 
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid username or password'
       });
     }
     
-    // Create JWT token - FIX: Use process.env.JWT_SECRET to match middleware
+    // Update last login time
+    const updateQuery = `UPDATE ${role}s SET last_login = CURRENT_TIMESTAMP WHERE id = ?`;
+    await pool.query(updateQuery, [user.id]);
+    
+    // Create JWT token
     const token = jwt.sign(
-      { 
-        id: user.id, 
-        username: user.username, 
-        role: role 
-      }, 
-      process.env.JWT_SECRET, 
-      { expiresIn: authConfig.expiresIn }
+      {
+        id: user.id,
+        username: user.username,
+        role: role
+      },
+      process.env.JWT_SECRET || 'your-secret-key',
+      { expiresIn: '24h' }
     );
     
-    // Set cookie with token
-    res.cookie(authConfig.cookieName, token, { 
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production', // Add secure flag for production
-      sameSite: 'strict', // Add sameSite protection
-      maxAge: 24 * 60 * 60 * 1000 // 24 hours
-    });
+    // Create user data object excluding password
+    const userData = { ...user };
+    delete userData[passwordField];
     
-    // Redirect based on role
-    if (role === 'admin') {
-      res.redirect('/admin/dashboard');
-    } else {
-      res.redirect('/students/dashboard');
-    }
+    res.status(200).json({
+      success: true,
+      message: 'Login successful',
+      token,
+      user: userData
+    });
   } catch (error) {
     console.error('Login error:', error);
-    res.render('auth/login', { 
-      error: 'An error occurred during login' 
+    res.status(500).json({
+      success: false,
+      message: 'An error occurred during login',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 };
 
-// Student registration form
-exports.getRegisterForm = (req, res) => {
-  res.render('auth/register', { error: null });
-};
-
-// Process student registration
-exports.registerStudent = async (req, res) => {
+/**
+ * Register a new student
+ */
+exports.register = async (req, res) => {
   try {
-    const { username, password, name, email, dateOfBirth } = req.body;
-    const studentRepository = getRepository('Student');
+    const { 
+      username, 
+      password, 
+      student_id,
+      email, 
+      full_name, 
+      date_of_birth,
+      program_id,
+      class: class_name
+    } = req.body;
     
-    // Check if username or email already exists
-    const existingStudent = await studentRepository.findOne({
-      where: [
-        { username },
-        { email }
-      ]
-    });
+    // Validate required fields
+    if (!username || !password || !student_id || !email || !full_name || !program_id) {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing required fields'
+      });
+    }
     
-    if (existingStudent) {
-      return res.render('auth/register', { 
-        error: 'Username or email already exists' 
+    // Check if program_id exists
+    const [programs] = await pool.query('SELECT * FROM academic_programs WHERE id = ?', [program_id]);
+    if (programs.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid program ID'
+      });
+    }
+    
+    // Check if username, student_id, or email already exists
+    const [existingUsers] = await pool.query(
+      'SELECT * FROM students WHERE username = ? OR student_id = ? OR email = ?',
+      [username, student_id, email]
+    );
+    
+    if (existingUsers.length > 0) {
+      let message = 'Registration failed: ';
+      if (existingUsers.some(user => user.username === username)) {
+        message += 'Username already exists. ';
+      }
+      if (existingUsers.some(user => user.student_id === student_id)) {
+        message += 'Student ID already exists. ';
+      }
+      if (existingUsers.some(user => user.email === email)) {
+        message += 'Email already exists. ';
+      }
+      
+      return res.status(400).json({
+        success: false,
+        message: message.trim()
+      });
+    }
+    
+    // Validate password strength
+    if (password.length < 8) {
+      return res.status(400).json({
+        success: false,
+        message: 'Password must be at least 8 characters long'
       });
     }
     
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
     
-    // Create student
-    const student = studentRepository.create({
-      username,
-      password: hashedPassword,
-      name,
-      email,
-      dateOfBirth: dateOfBirth || null
+    // Insert new student
+    const [result] = await pool.query(
+      `INSERT INTO students (
+        username, password_student, student_id, email, full_name, 
+        date_of_birth, class, program_id, enrollment_date
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURDATE())`,
+      [
+        username, 
+        hashedPassword, 
+        student_id, 
+        email, 
+        full_name, 
+        date_of_birth || null, 
+        class_name || null, 
+        program_id
+      ]
+    );
+    
+    res.status(201).json({
+      success: true,
+      message: 'Registration successful',
+      userId: result.insertId
     });
-    
-    await studentRepository.save(student);
-    
-    // Redirect to login
-    res.redirect('/auth/login?registered=true');
   } catch (error) {
     console.error('Registration error:', error);
-    res.render('auth/register', { 
-      error: 'An error occurred during registration' 
+    res.status(500).json({
+      success: false,
+      message: 'An error occurred during registration',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 };
 
-// Logout user
-exports.logout = (req, res) => {
-  res.clearCookie(authConfig.cookieName);
-  res.redirect('/auth/login');
+/**
+ * Get the profile of the currently authenticated user
+ */
+exports.getProfile = async (req, res) => {
+  try {
+    const { id, role } = req.user;
+    
+    let query;
+    if (role === 'admin') {
+      query = 'SELECT id, username, email, created_at, last_login FROM admins WHERE id = ?';
+    } else {
+      query = `SELECT s.id, s.username, s.student_id, s.email, s.full_name, s.date_of_birth,
+               s.class, s.program_id, s.enrollment_date, s.created_at, s.last_login,
+               p.name as program_name, p.description as program_description
+               FROM students s
+               JOIN academic_programs p ON s.program_id = p.id
+               WHERE s.id = ?`;
+    }
+    
+    const [rows] = await pool.query(query, [id]);
+    
+    if (rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+    
+    res.status(200).json({
+      success: true,
+      user: rows[0]
+    });
+  } catch (error) {
+    console.error('Get profile error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve user profile',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
+/**
+ * Change password for the currently authenticated user
+ */
+exports.changePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    const { id, role } = req.user;
+    
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'Current password and new password are required'
+      });
+    }
+    
+    if (newPassword.length < 8) {
+      return res.status(400).json({
+        success: false,
+        message: 'New password must be at least 8 characters long'
+      });
+    }
+    
+    let table, passwordField;
+    if (role === 'admin') {
+      table = 'admins';
+      passwordField = 'password_admin';
+    } else {
+      table = 'students';
+      passwordField = 'password_student';
+    }
+    
+    // Get current password
+    const [rows] = await pool.query(`SELECT ${passwordField} FROM ${table} WHERE id = ?`, [id]);
+    
+    if (rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+    
+    // Verify current password
+    const isValidPassword = await bcrypt.compare(currentPassword, rows[0][passwordField]);
+    
+    if (!isValidPassword) {
+      return res.status(401).json({
+        success: false,
+        message: 'Current password is incorrect'
+      });
+    }
+    
+    // Hash new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    
+    // Update password
+    await pool.query(
+      `UPDATE ${table} SET ${passwordField} = ? WHERE id = ?`,
+      [hashedPassword, id]
+    );
+    
+    res.status(200).json({
+      success: true,
+      message: 'Password changed successfully'
+    });
+  } catch (error) {
+    console.error('Change password error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to change password',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
 };
