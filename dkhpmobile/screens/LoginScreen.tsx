@@ -1,205 +1,83 @@
-import React, { useEffect, useRef, useState } from "react";
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  Animated,
-  StyleSheet,
-  Image,
-  Dimensions,
-  TextStyle,
-} from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import { MaterialIcons } from '@expo/vector-icons';
-import { authService } from '../src/api/services/auth-service';
-import { useAuth } from '../src/api/context/auth-context';
-import { LoginResponse } from '../src/api/types/auth-types';
-
-const { width } = Dimensions.get('window');
-
-interface FloatingLabelInputProps {
-  label: string;
-  value: string;
-  onChangeText: (text: string) => void;
-  secureTextEntry?: boolean;
-  icon: keyof typeof Ionicons.glyphMap;
-}
-
-const FloatingLabelInput: React.FC<FloatingLabelInputProps> = ({ 
-  label, 
-  value, 
-  onChangeText, 
-  secureTextEntry, 
-  icon 
-}) => {
-  const [isFocused, setIsFocused] = useState(false);
-  const animatedIsFocused = useRef(new Animated.Value(value ? 1 : 0)).current;
-
-  useEffect(() => {
-    Animated.timing(animatedIsFocused, {
-      toValue: (isFocused || value) ? 1 : 0,
-      duration: 200,
-      useNativeDriver: false,
-    }).start();
-  }, [isFocused, value]);
-
-  const labelStyle = {
-    position: 'absolute' as const,
-    left: 50,
-    top: animatedIsFocused.interpolate({
-      inputRange: [0, 1],
-      outputRange: [9, -8],
-    }),
-    fontSize: animatedIsFocused.interpolate({
-      inputRange: [0, 1],
-      outputRange: [16, 12],
-    }),
-    color: "rgba(255, 255, 255, 0.8)",
-    backgroundColor: "#0057B7",
-    paddingHorizontal: 4,
-  };
-
-  return (
-    <View style={styles.inputWrapper}>
-      <Ionicons name={icon} size={24} color="#fff" style={styles.icon} />
-      <Animated.Text style={labelStyle}>
-        {label}
-      </Animated.Text>
-      <TextInput
-        style={styles.input}
-        value={value}
-        onChangeText={onChangeText}
-        onFocus={() => setIsFocused(true)}
-        onBlur={() => setIsFocused(false)}
-        secureTextEntry={secureTextEntry}
-        underlineColorAndroid="transparent"
-      />
-    </View>
-  );
-};
+import React, { useState } from 'react';
+import { View, Text, TextInput, StyleSheet, TouchableOpacity, Image, Alert, ActivityIndicator, Platform } from 'react-native';
+import { useAuth } from '../src/api/context/AuthContext';
+import { useNavigation } from '@react-navigation/native';
+import { StatusBar } from 'expo-status-bar';
 
 const LoginScreen = () => {
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const logoFadeAnim = useRef(new Animated.Value(0)).current;
-  const logoMoveAnim = useRef(new Animated.Value(0)).current;
-  const formAnim = useRef(new Animated.Value(50)).current;
-  const formFadeAnim = useRef(new Animated.Value(0)).current;
-
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const isButtonActive = username.length > 0 && password.length > 0;
-
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth();
+  const navigation = useNavigation();
 
-  // Modify the login button press handler:
   const handleLogin = async () => {
+    if (!username || !password) {
+      Alert.alert('Error', 'Please enter both username and password');
+      return;
+    }
+
+    setIsLoading(true);
     try {
-      const response = await authService.login({ username, password });
-      login(response); // This comes from useAuth hook
-      // Navigate to main screen or handle success
-    } catch (error) {
-      // Handle error (show error message)
+      // Always use 'student' role for mobile app users
+      await login(username, password, 'student');
+      // Navigation will be handled by the AuthNavigator based on isLoggedIn state
+    } catch (error: any) {
+      console.error('Login error:', error);
+      let errorMessage = 'Invalid username or password';
+      if (error?.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      }
+      Alert.alert('Login Failed', errorMessage);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  useEffect(() => {
-    // Background fade in first
-    Animated.sequence([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 800,
-        useNativeDriver: true,
-      }),
-      // Wait 2 seconds then fade in logo
-      Animated.delay(2000),
-      Animated.timing(logoFadeAnim, {
-        toValue: 1,
-        duration: 500,
-        useNativeDriver: true,
-      }),
-      // Wait 3 seconds then move logo up
-      Animated.delay(3000),
-      Animated.timing(logoMoveAnim, {
-        toValue: -150,
-        duration: 800,
-        useNativeDriver: true,
-      }),
-      // Wait 1 second then show welcome text and form
-      Animated.delay(1000),
-      Animated.parallel([
-        Animated.timing(formFadeAnim, {
-          toValue: 1,
-          duration: 500,
-          useNativeDriver: true,
-        }),
-        Animated.timing(formAnim, {
-          toValue: 0,
-          duration: 800,
-          useNativeDriver: true,
-        }),
-      ]),
-    ]).start();
-  }, []);
-
   return (
     <View style={styles.container}>
-      <Animated.View style={{ opacity: fadeAnim, flex: 1, width: '100%' }}>
-        <Animated.View 
-          style={[
-            styles.logoContainer, 
-            { 
-              opacity: logoFadeAnim,
-              transform: [{ translateY: logoMoveAnim }]
-            }
-          ]}
+      <StatusBar style="auto" />
+      <View style={styles.logoContainer}>
+        <Image source={require('../assets/logo.png')} style={styles.logo} />
+        <Text style={styles.title}>ĐĂNG KÝ HỌC PHẦN</Text>
+        <Text style={styles.subtitle}>TRƯỜNG ĐẠI HỌC</Text>
+      </View>
+
+      <View style={styles.inputContainer}>
+        <Text style={styles.label}>Tài khoản</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Nhập tên đăng nhập"
+          value={username}
+          onChangeText={setUsername}
+          autoCapitalize="none"
+        />
+
+        <Text style={styles.label}>Mật khẩu</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Nhập mật khẩu"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+        />
+
+        <TouchableOpacity style={styles.forgotPassword}>
+          <Text style={styles.forgotPasswordText}>Quên mật khẩu?</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={[styles.button, (!username || !password) && styles.buttonDisabled]}
+          onPress={handleLogin}
+          disabled={isLoading || !username || !password}
         >
-          <Image 
-            source={require("../assets/logo.png")} 
-            style={styles.logo} 
-          />
-        </Animated.View>
-
-        <Animated.View 
-          style={[
-            styles.formContainer,
-            {
-              transform: [{ translateY: formAnim }],
-              opacity: formFadeAnim,
-            }
-          ]}
-        >
-          <Text style={styles.welcome}>Welcome to HUCE!</Text>
-
-          <FloatingLabelInput
-            label="Tên đăng nhập"
-            value={username}
-            onChangeText={setUsername}
-            icon="person-outline"
-          />
-
-          <FloatingLabelInput
-            label="Mật khẩu"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            icon="lock-closed-outline"
-          />
-
-          <TouchableOpacity
-            style={[
-              styles.loginButton,
-              isButtonActive && styles.loginButtonActive
-            ]}
-            disabled={!isButtonActive}
-          >
-            <Text style={[
-              styles.loginButtonText,
-              !isButtonActive && styles.loginButtonTextInactive
-            ]}>ĐĂNG NHẬP</Text>
-          </TouchableOpacity>
-        </Animated.View>
-      </Animated.View>
+          {isLoading ? (
+            <ActivityIndicator color="white" />
+          ) : (
+            <Text style={styles.buttonText}>ĐĂNG NHẬP</Text>
+          )}
+        </TouchableOpacity>
+      </View>
     </View>
   );
 };
@@ -207,82 +85,73 @@ const LoginScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#0057B7",
+    backgroundColor: '#f5f5f5',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 20,
   },
   logoContainer: {
-    alignItems: "center",
-    position: "absolute",
-    width: '100%',
-    top: "35%",
+    alignItems: 'center',
+    marginBottom: 40,
   },
   logo: {
-    width: 150,
-    height: 150,
-    resizeMode: "contain",
+    width: 100,
+    height: 100,
+    resizeMode: 'contain',
+    marginBottom: 10,
   },
-  welcome: {
-    color: "#fff",
+  title: {
     fontSize: 24,
-    marginBottom: 30,
-    fontWeight: "700",
-    textAlign: "center",
+    fontWeight: 'bold',
+    color: '#003366',
+    textAlign: 'center',
   },
-  formContainer: {
-    width: width * 0.9,
-    position: "absolute",
-    alignSelf: "center",
-    top: "45%",
+  subtitle: {
+    fontSize: 16,
+    color: '#666',
+    marginTop: 5,
   },
-  inputWrapper: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: "#fff",
-    borderRadius: 5,
-    paddingHorizontal: 15,
-    height: 55,
-    position: 'relative',
+  inputContainer: {
+    width: '100%',
+    maxWidth: 400,
   },
-  icon: {
-    marginRight: 10,
-    width: 24,
-    height: 24,
+  label: {
+    fontSize: 16,
+    marginBottom: 5,
+    color: '#333',
+    fontWeight: '500',
   },
   input: {
-    flex: 1,
-    color: "#fff",
-    fontSize: 16,
-    height: 55,
-    paddingTop: 10,
-    paddingBottom: 0,
-  },
-  loginButton: {
-    height: 45,
-    backgroundColor: "rgba(255, 255, 255, 0.5)",
-    justifyContent: "center",
-    alignItems: "center",
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#ddd',
     borderRadius: 5,
-    marginTop: 10,
-    width: '60%',
-    alignSelf: 'center',
+    padding: 12,
+    marginBottom: 15,
+    fontSize: 16,
   },
-  loginButtonActive: {
-    backgroundColor: "#FFA500",
+  forgotPassword: {
+    alignSelf: 'flex-end',
+    marginBottom: 20,
   },
-  loginButtonText: {
-    color: "#fff",
-    fontSize: 15,
-    fontWeight: "800",
-    letterSpacing: 1,
+  forgotPasswordText: {
+    color: '#003366',
+    fontSize: 14,
   },
-  loginButtonTextInactive: {
-    opacity: 0.9,
+  button: {
+    backgroundColor: '#003366',
+    borderRadius: 5,
+    padding: 15,
+    alignItems: 'center',
+  },
+  buttonDisabled: {
+    backgroundColor: '#aab',
+  },
+  buttonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 16,
   },
 });
 
 export default LoginScreen;
-
-function login(response: any) {
-  throw new Error("Function not implemented.");
-}
