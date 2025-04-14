@@ -1,120 +1,226 @@
 import apiClient from '../config/api-config';
 
+// Define interfaces for type safety
+export interface CourseOfferingModel {
+  offering_id: number;
+  course_id: number;
+  code: string;
+  title: string;
+  description?: string;
+  credits: number;
+  category_name?: string;
+  section_number: string;
+  max_enrollment: number;
+  current_enrollment: number;
+  term_name: string;
+  term_id: number;
+  available_seats: number;
+  building?: string;
+  room_number?: string;
+  professor_name?: string;
+}
+
+export interface AcademicTermModel {
+  id: number;
+  name: string;
+  start_date: string;
+  end_date: string;
+  registration_start: string;
+  registration_end: string;
+}
+
+export interface CurriculumCourseModel {
+  id: number;
+  code: string;
+  title: string;
+  credits: number;
+  description?: string;
+  category_name?: string;
+  is_required: boolean;
+  prerequisite_courses?: string;
+}
+
+export interface SemesterModel {
+  id: number;
+  name: string;
+  sequence: number;
+  credits: number;
+  courses: CurriculumCourseModel[];
+}
+
+export interface CurriculumFrameworkModel {
+  totalCredits: number;
+  program: {
+    id: number;
+    name: string;
+  } | null;
+  major: {
+    id: number;
+    name: string;
+  } | null;
+  semesters: SemesterModel[];
+}
+
+export interface MajorModel {
+  id: number;
+  name: string;
+  code: string;
+  program_id: number;
+  program_name: string;
+  program_code: string;
+}
+
 /**
- * Service for handling course-related operations
+ * Service for fetching course-related data from the API
  */
-export const courseService = {
+const courseService = {
   /**
-   * Get all available academic terms
+   * Get all available courses for registration
+   * @param termId - Optional term ID to filter courses by term
+   * @returns A promise that resolves to an array of available course offerings
    */
-  getAllTerms: async () => {
+  getAvailableCourses: async (termId?: number): Promise<CourseOfferingModel[]> => {
     try {
-      return await apiClient.get('/courses/terms');
+      const params = termId ? { termId } : {};
+      const response = await apiClient.get('/courses/available', { params });
+      return response.data.data;
     } catch (error) {
-      console.error('Get terms error:', error);
+      console.error('Error fetching available courses:', error);
       throw error;
     }
   },
-  
+
   /**
-   * Get a specific term by ID
-   * @param termId - ID of the term to retrieve
+   * Get all available courses for registration in a specific semester
+   * @param semesterId - The ID of the semester to filter courses by
+   * @returns A promise that resolves to an array of available course offerings for the specified semester
    */
-  getTermById: async (termId: number) => {
+  getAvailableCoursesBySemester: async (semesterId: number): Promise<CourseOfferingModel[]> => {
     try {
-      return await apiClient.get(`/courses/terms/${termId}`);
+      const response = await apiClient.get('/courses/available-by-semester', { 
+        params: { semesterId } 
+      });
+      return response.data.data;
     } catch (error) {
-      console.error('Get term error:', error);
+      console.error(`Error fetching available courses for semester ID ${semesterId}:`, error);
       throw error;
     }
   },
-  
+
   /**
-   * Get all available courses
+   * Get all active academic terms
+   * @returns A promise that resolves to an array of active academic terms
+   */
+  getActiveTerms: async (): Promise<AcademicTermModel[]> => {
+    try {
+      const response = await apiClient.get('/courses/terms');
+      return response.data.data;
+    } catch (error) {
+      console.error('Error fetching active terms:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get detailed information about a specific course offering
+   * @param offeringId - The ID of the course offering
+   * @returns A promise that resolves to the course offering details
+   */
+  getCourseOfferingDetails: async (offeringId: number): Promise<CourseOfferingModel> => {
+    try {
+      const response = await apiClient.get(`/course-offerings/${offeringId}`);
+      return response.data.data;
+    } catch (error) {
+      console.error(`Error fetching course offering details for ID ${offeringId}:`, error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get all courses (not just available ones)
+   * @returns A promise that resolves to an array of all courses
    */
   getAllCourses: async () => {
     try {
-      return await apiClient.get('/courses');
+      const response = await apiClient.get('/courses');
+      return response.data.data;
     } catch (error) {
-      console.error('Get courses error:', error);
+      console.error('Error fetching all courses:', error);
       throw error;
     }
   },
-  
+
   /**
-   * Get courses for a specific term
-   * @param termId - ID of the term
+   * Search courses by various criteria
+   * @param params - Search parameters
+   * @returns A promise that resolves to the search results
    */
-  getCoursesByTerm: async (termId: number) => {
+  searchCourses: async (params: { code?: string, title?: string, category_id?: number, credits?: number }) => {
     try {
-      return await apiClient.get(`/courses/term/${termId}`);
+      const response = await apiClient.get('/courses/search', { params });
+      return response.data.data;
     } catch (error) {
-      console.error('Get courses by term error:', error);
+      console.error('Error searching courses:', error);
       throw error;
     }
   },
-  
+
   /**
-   * Get a specific course by ID
-   * @param courseId - ID of the course to retrieve
+   * Get curriculum framework (Chương trình khung)
+   * @param majorId - Optional major ID to filter by specific major
+   * @param programId - Optional program ID to filter by specific program
+   * @returns A promise that resolves to the curriculum framework data
    */
-  getCourseById: async (courseId: number) => {
+  getCurriculumFramework: async (majorId?: number, programId?: number): Promise<CurriculumFrameworkModel> => {
     try {
-      return await apiClient.get(`/courses/${courseId}`);
+      const params: Record<string, any> = {};
+      if (majorId) params.major_id = majorId;
+      if (programId) params.program_id = programId;
+
+      const response = await apiClient.get('/courses/curriculum', { params });
+      
+      // Make sure we're properly parsing the data
+      if (response.data && response.data.success && response.data.data) {
+        // Extract the data object
+        const curriculumData = response.data.data;
+        
+        // Check if semesters exist in the response
+        if (!curriculumData.semesters || !Array.isArray(curriculumData.semesters)) {
+          throw new Error('Invalid curriculum data: missing or invalid semesters array');
+        }
+        
+        // Process each semester to ensure courses array is properly formatted
+        curriculumData.semesters = curriculumData.semesters.map((semester: any) => {
+          // Make sure courses is an array
+          if (!semester.courses || !Array.isArray(semester.courses)) {
+            semester.courses = [];
+          }
+          return semester;
+        });
+        
+        return curriculumData;
+      }
+      
+      throw new Error('Invalid curriculum data received from server');
     } catch (error) {
-      console.error('Get course error:', error);
+      console.error('Error fetching curriculum framework:', error);
       throw error;
     }
   },
-  
+
   /**
-   * Get courses by category
-   * @param categoryId - ID of the category
+   * Get list of all available majors
+   * @returns A promise that resolves to an array of majors
    */
-  getCoursesByCategory: async (categoryId: number) => {
+  getMajors: async (): Promise<MajorModel[]> => {
     try {
-      return await apiClient.get(`/courses/category/${categoryId}`);
+      const response = await apiClient.get('/courses/majors');
+      return response.data.data;
     } catch (error) {
-      console.error('Get courses by category error:', error);
-      throw error;
-    }
-  },
-  
-  /**
-   * Get course categories
-   */
-  getCategories: async () => {
-    try {
-      return await apiClient.get('/courses/categories');
-    } catch (error) {
-      console.error('Get categories error:', error);
-      throw error;
-    }
-  },
-  
-  /**
-   * Get program curriculum (required courses for a degree program)
-   * @param programId - ID of the academic program
-   */
-  getProgramCurriculum: async (programId: number) => {
-    try {
-      return await apiClient.get(`/courses/program/${programId}/curriculum`);
-    } catch (error) {
-      console.error('Get program curriculum error:', error);
-      throw error;
-    }
-  },
-  
-  /**
-   * Search courses by keyword
-   * @param keyword - Search term
-   */
-  searchCourses: async (keyword: string) => {
-    try {
-      return await apiClient.get(`/courses/search?keyword=${encodeURIComponent(keyword)}`);
-    } catch (error) {
-      console.error('Search courses error:', error);
+      console.error('Error fetching majors:', error);
       throw error;
     }
   }
 };
+
+export default courseService;

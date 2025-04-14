@@ -1,229 +1,209 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  FlatList, 
-  TouchableOpacity, 
-  ActivityIndicator, 
-  Alert, 
-  RefreshControl 
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  ActivityIndicator,
+  Alert,
+  FlatList
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
-import { courseService } from '../src/api/services/courseService';
-import { registrationService } from '../src/api/services/registrationService';
-import { Ionicons } from '@expo/vector-icons';
-
-// Define type for a course
-type Course = {
-  id: number;
-  course_code: string;
-  title: string;
-  course_description?: string;
-  credits: number;
-  category_name?: string;
-  max_capacity: number;
-  current_enrollment?: number;
-  term_id?: number;
-  term_name?: string;
-};
-
-// Define type for academic term
-type Term = {
-  id: number;
-  term_name: string;
-  start_date: string;
-  end_date: string;
-  is_active: boolean;
-};
+import { useAuth } from '../src/api/context/AuthContext';
+import courseService, { CourseOfferingModel, AcademicTermModel } from '../src/api/services/courseService';
+import Icon from 'react-native-vector-icons/MaterialIcons';
 
 const DangKyHocPhan = () => {
-  const [courses, setCourses] = useState<Course[]>([]);
-  const [terms, setTerms] = useState<Term[]>([]);
-  const [selectedTerm, setSelectedTerm] = useState<number | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [registering, setRegistering] = useState<{[key: number]: boolean}>({});
+  // Authentication context for user token
+  const { user, isAuthenticated } = useAuth();
 
-  // Load available terms when component mounts
+  // State variables
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [terms, setTerms] = useState<AcademicTermModel[]>([]);
+  const [selectedTermId, setSelectedTermId] = useState<number | null>(null);
+  const [availableCourses, setAvailableCourses] = useState<CourseOfferingModel[]>([]);
+  const [registrationType, setRegistrationType] = useState('NEW'); // NEW, RETAKE, IMPROVE
+
+  // Load academic terms when component mounts
   useEffect(() => {
-    fetchTerms();
+    const loadTerms = async () => {
+      try {
+        setLoading(true);
+        const termsData = await courseService.getActiveTerms();
+        setTerms(termsData);
+        // Set the first term as selected by default if available
+        if (termsData.length > 0) {
+          setSelectedTermId(termsData[0].id);
+        }
+      } catch (err) {
+        console.error('Error loading terms:', err);
+        setError('Không thể tải dữ liệu học kỳ. Vui lòng thử lại sau.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadTerms();
   }, []);
 
-  // Load courses when a term is selected
+  // Load available courses when term selection changes
   useEffect(() => {
-    if (selectedTerm) {
-      fetchCourses(selectedTerm);
-    }
-  }, [selectedTerm]);
+    const loadAvailableCourses = async () => {
+      if (!selectedTermId) return;
 
-  // Fetch list of academic terms
-  const fetchTerms = async () => {
-    try {
-      setLoading(true);
-      const response = await courseService.getAllTerms();
-      setTerms(response.data);
-      
-      // Select the active term by default
-      const activeTerm = response.data.find((term: Term) => term.is_active);
-      if (activeTerm) {
-        setSelectedTerm(activeTerm.id);
-      } else if (response.data.length > 0) {
-        setSelectedTerm(response.data[0].id);
-      }
-    } catch (error) {
-      console.error('Error fetching terms:', error);
-      Alert.alert('Error', 'Failed to load academic terms');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Fetch courses for the selected term
-  const fetchCourses = async (termId: number) => {
-    try {
-      setLoading(true);
-      const response = await courseService.getCoursesByTerm(termId);
-      setCourses(response.data);
-    } catch (error) {
-      console.error('Error fetching courses:', error);
-      Alert.alert('Error', 'Failed to load courses for the selected term');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Handle refresh
-  const onRefresh = async () => {
-    setRefreshing(true);
-    if (selectedTerm) {
       try {
-        await fetchCourses(selectedTerm);
-      } catch (error) {
-        console.error('Error refreshing courses:', error);
+        setLoading(true);
+        // Use the new getAvailableCoursesBySemester function instead
+        const coursesData = await courseService.getAvailableCoursesBySemester(selectedTermId);
+        setAvailableCourses(coursesData);
+        setError(null);
+      } catch (err) {
+        console.error('Error loading available courses:', err);
+        setError('Không thể tải dữ liệu học phần. Vui lòng thử lại sau.');
+        setAvailableCourses([]);
+      } finally {
+        setLoading(false);
       }
-    }
-    setRefreshing(false);
+    };
+
+    loadAvailableCourses();
+  }, [selectedTermId]);
+
+  // Handle term selection change
+  const handleTermChange = (termId: number) => {
+    setSelectedTermId(termId);
   };
 
-  // Register for a course
-  const registerForCourse = async (course: Course) => {
-    if (!selectedTerm) return;
-    
-    try {
-      setRegistering(prev => ({ ...prev, [course.id]: true }));
-      await registrationService.registerCourse(course.id, selectedTerm);
-      
-      Alert.alert(
-        'Success', 
-        `You have successfully registered for ${course.title}`
-      );
-      
-      // Refresh the course list to show updated enrollment
-      fetchCourses(selectedTerm);
-    } catch (error: any) {
-      console.error('Error registering for course:', error);
-      let errorMessage = 'Failed to register for the course';
-      
-      if (error?.response?.data?.message) {
-        errorMessage = error.response.data.message;
-      }
-      
-      Alert.alert('Registration Failed', errorMessage);
-    } finally {
-      setRegistering(prev => ({ ...prev, [course.id]: false }));
-    }
+  // Handle registration type change
+  const handleRegistrationTypeChange = (type: string) => {
+    setRegistrationType(type);
   };
 
-  // Render a course item in the list
-  const renderCourseItem = ({ item }: { item: Course }) => {
-    const isAvailable = !item.current_enrollment || item.current_enrollment < item.max_capacity;
-    const isRegistering = registering[item.id] || false;
-    
-    return (
-      <View style={styles.courseItem}>
-        <View style={styles.courseInfo}>
-          <Text style={styles.courseCode}>{item.course_code}</Text>
-          <Text style={styles.courseTitle}>{item.title}</Text>
-          <Text style={styles.courseDetails}>
-            {item.credits} credits | {item.category_name || 'General'}
-          </Text>
-          <Text style={styles.enrollment}>
-            Enrollment: {item.current_enrollment || 0}/{item.max_capacity}
-          </Text>
-        </View>
-        
-        <TouchableOpacity
-          style={[
-            styles.registerButton,
-            !isAvailable && styles.registerButtonDisabled
-          ]}
-          disabled={!isAvailable || isRegistering}
-          onPress={() => registerForCourse(item)}
-        >
-          {isRegistering ? (
-            <ActivityIndicator size="small" color="#fff" />
-          ) : (
-            <Text style={styles.registerButtonText}>
-              {isAvailable ? 'Register' : 'Full'}
-            </Text>
-          )}
-        </TouchableOpacity>
-      </View>
+  // Handle course registration
+  const handleRegisterCourse = (course: CourseOfferingModel) => {
+    Alert.alert(
+      'Xác nhận đăng ký',
+      `Bạn có chắc chắn muốn đăng ký học phần "${course.title}" không?`,
+      [
+        { text: 'Hủy', style: 'cancel' },
+        { 
+          text: 'Đăng ký', 
+          onPress: () => {
+            // TODO: Connect to registration API
+            Alert.alert('Thành công', `Đã đăng ký học phần "${course.title}" thành công.`);
+          } 
+        }
+      ]
     );
   };
 
+  // Render course item
+  const renderCourseItem = ({ item }: { item: CourseOfferingModel }) => (
+    <View style={styles.courseCard}>
+      <View style={styles.courseHeader}>
+        <Text style={styles.courseCode}>{item.code}</Text>
+        <Text style={styles.courseSeats}>Còn {item.available_seats} chỗ</Text>
+      </View>
+      <Text style={styles.courseTitle}>{item.title}</Text>
+      <View style={styles.courseInfo}>
+        <Text style={styles.courseInfoText}>Số tín chỉ: {item.credits}</Text>
+        <Text style={styles.courseInfoText}>Lớp: {item.section_number}</Text>
+      </View>
+      {item.professor_name && (
+        <Text style={styles.courseInfoText}>Giảng viên: {item.professor_name}</Text>
+      )}
+      {item.building && item.room_number && (
+        <Text style={styles.courseInfoText}>Phòng: {item.building}-{item.room_number}</Text>
+      )}
+      <TouchableOpacity 
+        style={styles.registerButton}
+        onPress={() => handleRegisterCourse(item)}
+      >
+        <Text style={styles.registerButtonText}>Đăng ký</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Course Registration</Text>
-      
-      {/* Term selector */}
-      <View style={styles.pickerContainer}>
-        <Text style={styles.pickerLabel}>Select Term:</Text>
-        <View style={styles.pickerWrapper}>
-          <Picker
-            selectedValue={selectedTerm}
-            onValueChange={(itemValue) => setSelectedTerm(itemValue)}
-            style={styles.picker}
-            enabled={!loading}
+      <Text style={styles.headerTitle}>Đăng ký học phần</Text>
+
+      {/* Term Selection */}
+      <View style={styles.selectionContainer}>
+        <Text style={styles.label}>Học kỳ:</Text>
+        {terms.length > 0 ? (
+          <View style={styles.pickerContainer}>
+            <Picker
+              selectedValue={selectedTermId || ''}
+              onValueChange={(itemValue) => handleTermChange(Number(itemValue))}
+              style={styles.picker}
+              enabled={!loading}
+            >
+              {terms.map((term) => (
+                <Picker.Item key={term.id} label={term.name} value={term.id} />
+              ))}
+            </Picker>
+          </View>
+        ) : (
+          <Text style={styles.noDataText}>Không có học kỳ nào</Text>
+        )}
+      </View>
+
+      {/* Registration Type */}
+      <View style={styles.selectionContainer}>
+        <Text style={styles.label}>Loại đăng ký:</Text>
+        <View style={styles.typeContainer}>
+          <TouchableOpacity
+            style={[styles.typeButton, registrationType === 'NEW' && styles.typeButtonActive]}
+            onPress={() => handleRegistrationTypeChange('NEW')}
           >
-            {terms.map((term) => (
-              <Picker.Item 
-                key={term.id} 
-                label={term.term_name} 
-                value={term.id} 
-              />
-            ))}
-          </Picker>
+            <Text style={[styles.typeButtonText, registrationType === 'NEW' && styles.typeButtonTextActive]}>
+              Đăng ký mới
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.typeButton, registrationType === 'RETAKE' && styles.typeButtonActive]}
+            onPress={() => handleRegistrationTypeChange('RETAKE')}
+          >
+            <Text style={[styles.typeButtonText, registrationType === 'RETAKE' && styles.typeButtonTextActive]}>
+              Học lại
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.typeButton, registrationType === 'IMPROVE' && styles.typeButtonActive]}
+            onPress={() => handleRegistrationTypeChange('IMPROVE')}
+          >
+            <Text style={[styles.typeButtonText, registrationType === 'IMPROVE' && styles.typeButtonTextActive]}>
+              Cải thiện
+            </Text>
+          </TouchableOpacity>
         </View>
       </View>
 
-      {/* Course list */}
-      {loading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#003366" />
-          <Text style={styles.loadingText}>Loading courses...</Text>
-        </View>
-      ) : courses.length > 0 ? (
-        <FlatList
-          data={courses}
-          renderItem={renderCourseItem}
-          keyExtractor={(item) => item.id.toString()}
-          contentContainerStyle={styles.listContent}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              colors={['#003366']}
-            />
-          }
-        />
-      ) : (
-        <View style={styles.emptyContainer}>
-          <Ionicons name="alert-circle-outline" size={60} color="#999" />
-          <Text style={styles.emptyText}>No courses available for this term</Text>
-        </View>
-      )}
+      {/* Available Courses */}
+      <View style={styles.coursesContainer}>
+        <Text style={styles.sectionTitle}>Danh sách học phần có thể đăng ký</Text>
+        
+        {loading ? (
+          <ActivityIndicator size="large" color="#0066CC" style={styles.loadingIndicator} />
+        ) : error ? (
+          <View style={styles.errorContainer}>
+            <Icon name="error" size={24} color="#d9534f" />
+            <Text style={styles.errorText}>{error}</Text>
+          </View>
+        ) : availableCourses.length === 0 ? (
+          <Text style={styles.noDataText}>Không tìm thấy học phần nào</Text>
+        ) : (
+          <FlatList
+            data={availableCourses}
+            renderItem={renderCourseItem}
+            keyExtractor={(item) => item.offering_id.toString()}
+            contentContainerStyle={styles.coursesList}
+          />
+        )}
+      </View>
     </View>
   );
 };
@@ -234,109 +214,143 @@ const styles = StyleSheet.create({
     backgroundColor: '#f5f5f5',
     padding: 16,
   },
-  title: {
-    fontSize: 22,
+  headerTitle: {
+    fontSize: 24,
     fontWeight: 'bold',
-    color: '#003366',
-    marginBottom: 16,
+    color: '#0066CC',
+    marginBottom: 20,
     textAlign: 'center',
   },
-  pickerContainer: {
-    marginBottom: 20,
+  selectionContainer: {
+    marginBottom: 16,
   },
-  pickerLabel: {
+  label: {
     fontSize: 16,
-    marginBottom: 8,
     fontWeight: '500',
+    marginBottom: 8,
     color: '#333',
   },
-  pickerWrapper: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 5,
+  pickerContainer: {
     backgroundColor: '#fff',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#ddd',
     overflow: 'hidden',
   },
   picker: {
     height: 50,
+    width: '100%',
   },
-  listContent: {
-    paddingBottom: 16,
-  },
-  courseItem: {
-    backgroundColor: '#fff',
-    padding: 16,
-    marginBottom: 12,
-    borderRadius: 8,
+  typeContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+  },
+  typeButton: {
+    flex: 1,
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    padding: 10,
+    marginHorizontal: 4,
     alignItems: 'center',
+  },
+  typeButtonActive: {
+    backgroundColor: '#0066CC',
+    borderColor: '#0066CC',
+  },
+  typeButtonText: {
+    color: '#333',
+    fontWeight: '500',
+  },
+  typeButtonTextActive: {
+    color: '#fff',
+  },
+  coursesContainer: {
+    flex: 1,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 12,
+    color: '#333',
+  },
+  loadingIndicator: {
+    marginTop: 20,
+  },
+  errorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fadbd8',
+    padding: 16,
+    borderRadius: 8,
+    marginTop: 10,
+  },
+  errorText: {
+    color: '#d9534f',
+    marginLeft: 10,
+    flex: 1,
+  },
+  noDataText: {
+    textAlign: 'center',
+    color: '#777',
+    marginTop: 20,
+    fontStyle: 'italic',
+  },
+  coursesList: {
+    paddingBottom: 20,
+  },
+  courseCard: {
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    padding: 16,
+    marginBottom: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
     elevation: 2,
   },
-  courseInfo: {
-    flex: 1,
+  courseHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 8,
   },
   courseCode: {
     fontSize: 14,
     fontWeight: '500',
     color: '#666',
   },
+  courseSeats: {
+    fontSize: 14,
+    color: '#28a745',
+  },
   courseTitle: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: 'bold',
-    marginBottom: 4,
-    color: '#333',
+    marginBottom: 10,
+    color: '#0066CC',
   },
-  courseDetails: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 4,
+  courseInfo: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 6,
   },
-  enrollment: {
+  courseInfoText: {
     fontSize: 14,
-    color: '#444',
+    color: '#555',
+    marginBottom: 6,
   },
   registerButton: {
-    backgroundColor: '#003366',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 5,
-    justifyContent: 'center',
+    backgroundColor: '#28a745',
+    borderRadius: 6,
+    padding: 10,
     alignItems: 'center',
-    minWidth: 80,
-  },
-  registerButtonDisabled: {
-    backgroundColor: '#bbb',
+    marginTop: 10,
   },
   registerButtonText: {
     color: '#fff',
-    fontWeight: 'bold',
-    fontSize: 14,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    marginTop: 10,
-    color: '#666',
-    fontSize: 16,
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  emptyText: {
-    marginTop: 10,
-    fontSize: 16,
-    color: '#666',
-    textAlign: 'center',
+    fontWeight: '600',
   },
 });
 

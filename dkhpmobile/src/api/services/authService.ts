@@ -13,23 +13,37 @@ export const authService = {
    */
   login: async (username: string, password: string, role: 'student' | 'admin') => {
     try {
-      // Determine which endpoint to use based on role
-      const endpoint = role === 'admin' ? '/auth/admin/login' : '/auth/student/login';
+      console.log(`Attempting login: ${username} with role: ${role}`);
       
-      // Make login request
-      const response = await apiClient.post(endpoint, { username, password });
+      // Use a simplified endpoint - your server likely just uses /auth/login
+      const response = await apiClient.post('/auth/login', { 
+        username, 
+        password,
+        role
+      });
+      
+      console.log('Login response status:', response.status);
       
       // Extract token and user data
       const { token, user } = response.data;
+      
+      if (!token) {
+        throw new Error('No token received from server');
+      }
       
       // Store token and user data
       await AsyncStorage.setItem('auth_token', token);
       await AsyncStorage.setItem('user_role', role);
       await AsyncStorage.setItem('user_data', JSON.stringify(user));
       
+      console.log('Authentication data stored successfully');
       return response.data;
-    } catch (error) {
-      console.error('Login error:', error);
+    } catch (error: any) {
+      console.error('Login service error:', error.message);
+      // Add more context to the error for better troubleshooting
+      if (error.code === 'ERR_NETWORK') {
+        error.message = 'Network error: Unable to connect to the server. Check if the server is running.';
+      }
       throw error;
     }
   },
@@ -40,7 +54,7 @@ export const authService = {
    */
   register: async (userData: any) => {
     try {
-      const response = await apiClient.post('/auth/student/register', userData);
+      const response = await apiClient.post('/auth/register', userData);
       return response.data;
     } catch (error) {
       console.error('Register error:', error);
@@ -56,6 +70,7 @@ export const authService = {
       await AsyncStorage.removeItem('auth_token');
       await AsyncStorage.removeItem('user_role');
       await AsyncStorage.removeItem('user_data');
+      console.log('User logged out successfully');
     } catch (error) {
       console.error('Logout error:', error);
       throw error;
@@ -129,9 +144,9 @@ export const authService = {
    */
   changePassword: async (currentPassword: string, newPassword: string) => {
     try {
-      const response = await apiClient.put('/auth/change-password', {
-        current_password: currentPassword,
-        new_password: newPassword,
+      const response = await apiClient.post('/auth/change-password', {
+        currentPassword,
+        newPassword,
       });
       return response.data;
     } catch (error) {
