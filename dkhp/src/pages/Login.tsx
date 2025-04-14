@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import './App.css'
+import '../App.css'
+import React from 'react'
 
-function App() {
+function Login() {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
 
@@ -20,7 +21,7 @@ function App() {
         <div className="logo">
           <img src="/huce-logo.png" alt="HUCE Logo" />
         </div>
-        <h1>Welcome to HUCE</h1>
+        <h1 style={{ fontSize: '35px' }}>Welcome to HUCE</h1>
         
         <form onSubmit={handleLogin}>
           <div className="input-field">
@@ -29,10 +30,12 @@ function App() {
             </div>
             <input
               type="text"
-              placeholder="Tên đăng nhập"
+              id="username"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
+              placeholder=" "
             />
+            <label htmlFor="username">Tên đăng nhập</label>
           </div>
 
           <div className="input-field">
@@ -41,10 +44,16 @@ function App() {
             </div>
             <input
               type="password"
-              placeholder="Mật khẩu"
+              id="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              placeholder=" "
             />
+            <label htmlFor="password">Mật khẩu</label>
+          </div>
+          
+          <div className="forgot-password-container">
+            <Link to="/forgot-password" className="forgot-password-link">Quên mật khẩu</Link>
           </div>
 
           <button 
@@ -65,4 +74,4 @@ function App() {
   )
 }
 
-export default App
+export default Login
