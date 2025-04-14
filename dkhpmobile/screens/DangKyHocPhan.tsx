@@ -1,790 +1,343 @@
-import React, { useState } from 'react';
-import {
-  SafeAreaView,
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
-  StatusBar,
-  Alert,
+import React, { useState, useEffect } from 'react';
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  FlatList, 
+  TouchableOpacity, 
+  ActivityIndicator, 
+  Alert, 
+  RefreshControl 
 } from 'react-native';
-import Icon from '@expo/vector-icons/Ionicons';
-import { useNavigation } from '@react-navigation/native';
-import { StackNavigationProp } from '@react-navigation/stack';
+import { Picker } from '@react-native-picker/picker';
+import { courseService } from '../src/api/services/courseService';
+import { registrationService } from '../src/api/services/registrationService';
+import { Ionicons } from '@expo/vector-icons';
 
-// Define the navigation param list type
-type RootStackParamList = {
-  TrangChuScreen: undefined;
-  DangKyHocPhan: undefined;
-  ThongBao: undefined;
-  // Add other screens as needed
+// Define type for a course
+type Course = {
+  id: number;
+  course_code: string;
+  title: string;
+  course_description?: string;
+  credits: number;
+  category_name?: string;
+  max_capacity: number;
+  current_enrollment?: number;
+  term_id?: number;
+  term_name?: string;
 };
 
-// Define the navigation prop type for this screen
-type DangKyHocPhanNavigationProp = StackNavigationProp<RootStackParamList, 'DangKyHocPhan'>;
+// Define type for academic term
+type Term = {
+  id: number;
+  term_name: string;
+  start_date: string;
+  end_date: string;
+  is_active: boolean;
+};
 
-const App = () => {
-  // Use typed navigation
-  const navigation = useNavigation<DangKyHocPhanNavigationProp>();
-  const [selectedCourse, setSelectedCourse] = useState<string | null>(null);
-  const [registrationType, setRegistrationType] = useState<'NEW' | 'RETAKE' | 'IMPROVE'>('NEW');
-  const [selectedClass, setSelectedClass] = useState<string | null>(null);
-  const [isDropdownVisible, setDropdownVisible] = useState(false);
-  const [selectedSemester, setSelectedSemester] = useState('HK2 2024 - 2025');
+const DangKyHocPhan = () => {
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [terms, setTerms] = useState<Term[]>([]);
+  const [selectedTerm, setSelectedTerm] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [registering, setRegistering] = useState<{[key: number]: boolean}>({});
 
-  // Hàm để quay lại màn hình chính
-  const goBack = () => {
-    navigation.goBack();
+  // Load available terms when component mounts
+  useEffect(() => {
+    fetchTerms();
+  }, []);
+
+  // Load courses when a term is selected
+  useEffect(() => {
+    if (selectedTerm) {
+      fetchCourses(selectedTerm);
+    }
+  }, [selectedTerm]);
+
+  // Fetch list of academic terms
+  const fetchTerms = async () => {
+    try {
+      setLoading(true);
+      const response = await courseService.getAllTerms();
+      setTerms(response.data);
+      
+      // Select the active term by default
+      const activeTerm = response.data.find((term: Term) => term.is_active);
+      if (activeTerm) {
+        setSelectedTerm(activeTerm.id);
+      } else if (response.data.length > 0) {
+        setSelectedTerm(response.data[0].id);
+      }
+    } catch (error) {
+      console.error('Error fetching terms:', error);
+      Alert.alert('Error', 'Failed to load academic terms');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // Add function to navigate to ThongBao screen
-  const navigateToThongBao = () => {
-    navigation.navigate('ThongBao');
+  // Fetch courses for the selected term
+  const fetchCourses = async (termId: number) => {
+    try {
+      setLoading(true);
+      const response = await courseService.getCoursesByTerm(termId);
+      setCourses(response.data);
+    } catch (error) {
+      console.error('Error fetching courses:', error);
+      Alert.alert('Error', 'Failed to load courses for the selected term');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const toggleCourseSelection = (courseId: string) => {
-    setSelectedCourse(currentSelected => 
-      currentSelected === courseId ? null : courseId
+  // Handle refresh
+  const onRefresh = async () => {
+    setRefreshing(true);
+    if (selectedTerm) {
+      try {
+        await fetchCourses(selectedTerm);
+      } catch (error) {
+        console.error('Error refreshing courses:', error);
+      }
+    }
+    setRefreshing(false);
+  };
+
+  // Register for a course
+  const registerForCourse = async (course: Course) => {
+    if (!selectedTerm) return;
+    
+    try {
+      setRegistering(prev => ({ ...prev, [course.id]: true }));
+      await registrationService.registerCourse(course.id, selectedTerm);
+      
+      Alert.alert(
+        'Success', 
+        `You have successfully registered for ${course.title}`
+      );
+      
+      // Refresh the course list to show updated enrollment
+      fetchCourses(selectedTerm);
+    } catch (error: any) {
+      console.error('Error registering for course:', error);
+      let errorMessage = 'Failed to register for the course';
+      
+      if (error?.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      }
+      
+      Alert.alert('Registration Failed', errorMessage);
+    } finally {
+      setRegistering(prev => ({ ...prev, [course.id]: false }));
+    }
+  };
+
+  // Render a course item in the list
+  const renderCourseItem = ({ item }: { item: Course }) => {
+    const isAvailable = !item.current_enrollment || item.current_enrollment < item.max_capacity;
+    const isRegistering = registering[item.id] || false;
+    
+    return (
+      <View style={styles.courseItem}>
+        <View style={styles.courseInfo}>
+          <Text style={styles.courseCode}>{item.course_code}</Text>
+          <Text style={styles.courseTitle}>{item.title}</Text>
+          <Text style={styles.courseDetails}>
+            {item.credits} credits | {item.category_name || 'General'}
+          </Text>
+          <Text style={styles.enrollment}>
+            Enrollment: {item.current_enrollment || 0}/{item.max_capacity}
+          </Text>
+        </View>
+        
+        <TouchableOpacity
+          style={[
+            styles.registerButton,
+            !isAvailable && styles.registerButtonDisabled
+          ]}
+          disabled={!isAvailable || isRegistering}
+          onPress={() => registerForCourse(item)}
+        >
+          {isRegistering ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <Text style={styles.registerButtonText}>
+              {isAvailable ? 'Register' : 'Full'}
+            </Text>
+          )}
+        </TouchableOpacity>
+      </View>
     );
-    // Reset lựa chọn lớp học khi thay đổi môn học
-    setSelectedClass(null);
-  };
-
-  const toggleClassSelection = (classId: string) => {
-    setSelectedClass(currentSelected => 
-      currentSelected === classId ? null : classId
-    );
-  };
-
-  // Kiểm tra xem có môn học nào được chọn không
-  const isAnyCourseSelected = selectedCourse !== null;
-
-  const classDetails = {
-    '46880403': [
-      {
-        schedule: 'LT - Thứ 4 (T4 → T6)',
-        location: 'Cơ sở chính',
-        building: 'T2-H1',
-        room: '212.H1',
-        teacher: 'Trần Văn Thọ',
-        time: '19/03/2025 - 16/04/2025',
-      },
-      {
-        schedule: 'LT - Thứ 4 (T4 → T6)',
-        location: 'Cơ sở chính',
-        building: 'T5-H1',
-        room: '506.H1',
-        teacher: 'Trần Văn Thọ',
-        time: '23/04/2025 - 07/05/2025',
-      },
-      {
-        schedule: 'LT - Thứ 6 (T1 → T3)',
-        location: 'Cơ sở chính',
-        building: 'T2-H1',
-        room: '212.H1',
-        teacher: 'Trần Văn Thọ',
-        time: '21/03/2025 - 21/03/2025',
-      },
-    ],
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0052CC" />
+    <View style={styles.container}>
+      <Text style={styles.title}>Course Registration</Text>
       
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerContent}>
-          <TouchableOpacity 
-            style={styles.backButton}
-            onPress={goBack}
+      {/* Term selector */}
+      <View style={styles.pickerContainer}>
+        <Text style={styles.pickerLabel}>Select Term:</Text>
+        <View style={styles.pickerWrapper}>
+          <Picker
+            selectedValue={selectedTerm}
+            onValueChange={(itemValue) => setSelectedTerm(itemValue)}
+            style={styles.picker}
+            enabled={!loading}
           >
-            <Icon name="arrow-back" size={24} color="#fff" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Đăng ký học phần</Text>
-          <TouchableOpacity 
-            style={styles.notificationButton}
-            onPress={navigateToThongBao} // Add the navigation handler here
-          >
-            <Icon name="notifications-outline" size={24} color="#fff" />
-          </TouchableOpacity>
+            {terms.map((term) => (
+              <Picker.Item 
+                key={term.id} 
+                label={term.term_name} 
+                value={term.id} 
+              />
+            ))}
+          </Picker>
         </View>
-        <View style={styles.whiteSpace} />
       </View>
 
-      {/* Semester Selector */}
-      <View style={styles.semesterSelector}>
-        <TouchableOpacity
-          onPress={() => setDropdownVisible(!isDropdownVisible)} // Toggle dropdown
-          style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flex: 1 }}
-        >
-          <Text style={styles.semesterText}>{selectedSemester}</Text>
-          <Icon name={isDropdownVisible ? 'chevron-up' : 'chevron-down'} size={24} color="#000" />
-        </TouchableOpacity>
+      {/* Course list */}
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#003366" />
+          <Text style={styles.loadingText}>Loading courses...</Text>
+        </View>
+      ) : courses.length > 0 ? (
+        <FlatList
+          data={courses}
+          renderItem={renderCourseItem}
+          keyExtractor={(item) => item.id.toString()}
+          contentContainerStyle={styles.listContent}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={['#003366']}
+            />
+          }
+        />
+      ) : (
+        <View style={styles.emptyContainer}>
+          <Ionicons name="alert-circle-outline" size={60} color="#999" />
+          <Text style={styles.emptyText}>No courses available for this term</Text>
+        </View>
+      )}
+    </View>
+  );
+};
 
-        {isDropdownVisible && (
-          <View style={styles.dropdown}>
-            <TouchableOpacity
-              onPress={() => {
-                Alert.alert("Thông báo", "Đợt này sinh viên không được đăng ký!");
-                setDropdownVisible(false); // Đóng dropdown
-              }}
-              style={styles.dropdownItem}
-            >
-              <Text style={styles.dropdownText}>HK1 2024 - 2025</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => {
-                setSelectedSemester('HK2 2024 - 2025');
-                setDropdownVisible(false); // Đóng dropdown
-              }}
-              style={styles.dropdownItem}
-            >
-              <Text style={styles.dropdownText}>HK2 2024 - 2025</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-      </View>
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+    padding: 16,
+  },
+  title: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#003366',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  pickerContainer: {
+    marginBottom: 20,
+  },
+  pickerLabel: {
+    fontSize: 16,
+    marginBottom: 8,
+    fontWeight: '500',
+    color: '#333',
+  },
+  pickerWrapper: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 5,
+    backgroundColor: '#fff',
+    overflow: 'hidden',
+  },
+  picker: {
+    height: 50,
+  },
+  listContent: {
+    paddingBottom: 16,
+  },
+  courseItem: {
+    backgroundColor: '#fff',
+    padding: 16,
+    marginBottom: 12,
+    borderRadius: 8,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  courseInfo: {
+    flex: 1,
+  },
+  courseCode: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#666',
+  },
+  courseTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 4,
+    color: '#333',
+  },
+  courseDetails: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 4,
+  },
+  enrollment: {
+    fontSize: 14,
+    color: '#444',
+  },
+  registerButton: {
+    backgroundColor: '#003366',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 5,
+    justifyContent: 'center',
+    alignItems: 'center',
+    minWidth: 80,
+  },
+  registerButtonDisabled: {
+    backgroundColor: '#bbb',
+  },
+  registerButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 14,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 10,
+    color: '#666',
+    fontSize: 16,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emptyText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+  },
+});
 
-      {/* Registration Types */}
-      {selectedSemester === 'HK2 2024 - 2025' ? (
-        <>
-          <View style={styles.registrationTypes}>
-            <TouchableOpacity 
-              style={styles.typeButton}
-              onPress={() => {
-                setRegistrationType('NEW');
-                setSelectedCourse(null); // Reset lựa chọn môn học
-                setSelectedClass(null);  // Reset lựa chọn lớp học
-              }}
-            >
-              <View style={[
-                styles.radioButton,
-                registrationType === 'NEW' && styles.radioSelected
-              ]} />
-              <Text style={[
-                styles.typeText,
-                registrationType === 'NEW' && styles.typeTextSelected
-              ]}>HỌC MỚI</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={styles.typeButton}
-              onPress={() => {
-                setRegistrationType('RETAKE');
-                setSelectedCourse(null); // Reset lựa chọn môn học
-                setSelectedClass(null);  // Reset lựa chọn lớp học
-              }}
-            >
-              <View style={[
-                styles.radioButton,
-                registrationType === 'RETAKE' && styles.radioSelected
-              ]} />
-              <Text style={[
-                styles.typeText,
-                registrationType === 'RETAKE' && styles.typeTextSelected
-              ]}>HỌC LẠI</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={styles.typeButton}
-              onPress={() => {
-                setRegistrationType('IMPROVE');
-                setSelectedCourse(null); // Reset lựa chọn môn học
-                setSelectedClass(null);  // Reset lựa chọn lớp học
-              }}
-            >
-              <View style={[
-                styles.radioButton,
-                registrationType === 'IMPROVE' && styles.radioSelected
-              ]} />
-              <Text style={[
-                styles.typeText,
-                registrationType === 'IMPROVE' && styles.typeTextSelected
-              ]}>HỌC CẢI {'\n'} THIỆN</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Chuyển ScrollView lên trên phần tiêu đề để bao gồm cả tiêu đề */}
-          <ScrollView style={styles.courseList}>
-            {/* Đưa tiêu đề vào trong ScrollView */}
-            {registrationType === 'NEW' && (
-              <>
-                <Text style={styles.listTitle}>Môn học phần đang chờ đăng ký</Text>
-                
-                {/* Course List Section */}
-                <View>
-                  <View style={styles.tableHeader}>
-                    <View style={styles.radioColumnCell} />
-                    <Text style={[styles.headerCell, styles.indexColumnCell]}>STT</Text>
-                    <Text style={[styles.headerCell, styles.codeColumnCell]}>Mã HP</Text>
-                    <Text style={[styles.headerCell, styles.nameColumnCell]}>Tên môn học</Text>
-                    <Text style={[styles.headerCell, styles.creditColumnCell]}>TC</Text>
-                    <Text style={[styles.headerCell, styles.requiredColumnCell]}>Bắt buộc</Text>
-                    <Text style={[styles.headerCell, styles.prerequisiteColumnCell]}>Điều kiện tiên quyết</Text>
-                  </View>
-
-                  {/* Course Items */}
-                  {[
-                    { id: '430101', name: 'Giáo dục thể chất 1', credits: 1, required: false, prerequisite: '' },
-                    { id: '430102', name: 'Giáo dục thể chất 2', credits: 1, required: false, prerequisite: '' },
-                    { id: '430103', name: 'Giáo dục thể chất 3', credits: 1, required: false, prerequisite: '' },
-                    { id: '608821', name: 'Thực tập tốt nghiệp', credits: 3, required: true, prerequisite: '' },
-                    { id: '608822', name: 'Đồ án tốt nghiệp', credits: 7, required: true, prerequisite: '' },
-                  ].map((course, index) => (
-                    <View key={course.id} style={[
-                      styles.courseRow,
-                      selectedCourse === course.id && styles.selectedRow
-                    ]}>
-                      <TouchableOpacity 
-                        style={styles.radioColumnCell}
-                        onPress={() => toggleCourseSelection(course.id)}
-                      >
-                        <View style={[
-                          styles.courseRadio,
-                          selectedCourse === course.id && styles.courseRadioSelected
-                        ]} />
-                      </TouchableOpacity>
-                      <Text style={[styles.cell, styles.indexColumnCell]}>{index + 1}</Text>
-                      <Text style={[styles.cell, styles.codeColumnCell]}>{course.id}</Text>
-                      <Text style={[styles.cell, styles.nameColumnCell]}>{course.name}</Text>
-                      <Text style={[styles.cell, styles.creditColumnCell]}>{course.credits}</Text>
-                      <View style={styles.requiredColumnCell}>
-                        <Icon 
-                          name={course.required ? "checkmark-circle" : "close-circle"} 
-                          size={20} 
-                          color={course.required ? "#4CAF50" : "#F44336"} 
-                        />
-                      </View>
-                      <Text style={[styles.cell, styles.prerequisiteColumnCell]}>{course.prerequisite}</Text>
-                    </View>
-                  ))}
-                </View>
-              </>
-            )}
-
-            {registrationType === 'RETAKE' && (
-              <>
-                <Text style={styles.listTitle}>Môn học phần đang chờ đăng ký</Text>
-                
-                {/* No Data Message */}
-                <View style={styles.noDataContainer}>
-                  <Text style={styles.noDataText}>Không tìm thấy môn học</Text>
-                </View>
-              </>
-            )}
-
-            {registrationType === 'IMPROVE' && (
-              <>
-                <Text style={styles.listTitle}>Môn học phần đang chờ đăng ký</Text>
-                
-                {/* Course List Section */}
-                <View>
-                  <View style={styles.tableHeader}>
-                    <View style={styles.radioColumnCell} />
-                    <Text style={[styles.headerCell, styles.indexColumnCell]}>STT</Text>
-                    <Text style={[styles.headerCell, styles.codeColumnCell]}>Mã HP</Text>
-                    <Text style={[styles.headerCell, styles.nameColumnCell]}>Tên môn học</Text>
-                    <Text style={[styles.headerCell, styles.creditColumnCell]}>TC</Text>
-                    <Text style={[styles.headerCell, styles.requiredColumnCell]}>Bắt buộc</Text>
-                    <Text style={[styles.headerCell, styles.prerequisiteColumnCell]}>Điều kiện tiên quyết</Text>
-                  </View>
-
-                  {/* Course Items */}
-                  {[
-                    { id: '398803', name: 'Giải tích ứng dụng kỹ thuật', credits: 3, required: true, prerequisite: '' },
-                    { id: '480114', name: 'Giáo dục Quốc phòng 4', credits: 2, required: true, prerequisite: '' },
-                    { id: '538803', name: 'Kiến trúc máy tính', credits: 3, required: true, prerequisite: '' },
-                    { id: '468804', name: 'Mạng máy tính', credits: 3, required: true, prerequisite: '' },
-                  ].map((course, index) => (
-                    <View key={course.id} style={[
-                      styles.courseRow,
-                      selectedCourse === course.id && styles.selectedRow
-                    ]}>
-                      <TouchableOpacity 
-                        style={styles.radioColumnCell}
-                        onPress={() => toggleCourseSelection(course.id)}
-                      >
-                        <View style={[
-                          styles.courseRadio,
-                          selectedCourse === course.id && styles.courseRadioSelected
-                        ]} />
-                      </TouchableOpacity>
-                      <Text style={[styles.cell, styles.indexColumnCell]}>{index + 1}</Text>
-                      <Text style={[styles.cell, styles.codeColumnCell]}>{course.id}</Text>
-                      <Text style={[styles.cell, styles.nameColumnCell]}>{course.name}</Text>
-                      <Text style={[styles.cell, styles.creditColumnCell]}>{course.credits}</Text>
-                      <View style={styles.requiredColumnCell}>
-                        <Icon 
-                          name={course.required ? "checkmark-circle" : "close-circle"} 
-                          size={20} 
-                          color={course.required ? "#4CAF50" : "#F44336"} 
-                        />
-                      </View>
-                      <Text style={[styles.cell, styles.prerequisiteColumnCell]}>{course.prerequisite}</Text>
-                    </View>
-                  ))}
-                </View>
-              </>
-            )}
-
-            {/* Class Registration Section */}
-            <View style={styles.classSection}>
-              <Text style={styles.sectionTitle}>Lớp học phần chờ đăng ký</Text>
-              
-              {/* No Conflict Message */}
-              <View style={styles.noConflictContainer}>
-                <TouchableOpacity style={styles.checkboxContainer}>
-                  <View style={styles.checkbox} />
-                </TouchableOpacity>
-                <Text style={[styles.noConflictText, { color: 'red', fontWeight: 'bold' }]}>
-                  Hiển thị lớp học phần không trùng lịch
-                </Text>
-              </View>
-
-              {/* Class List Header */}
-              <View style={styles.classListHeader}>
-                <View style={styles.radioColumnCell} />
-                <Text style={[styles.classHeaderCell, styles.indexColumnCell]}>STT</Text>
-                <Text style={[styles.classHeaderCell, styles.classInfoColumnCell]}>Thông tin lớp học phần</Text>
-                <Text style={[styles.classHeaderCell, styles.requiredColumnCell]}>Đã đăng ký</Text>
-              </View>
-
-              {/* Class Details Section */}
-              {selectedCourse === '468804' && (
-                <View>
-                  {[
-                    { id: '46880401', name: 'Mạng máy tính', status: 'Đang lên kế hoạch', registered: '49/50', classCode: '68CS1' },
-                    { id: '46880402', name: 'Mạng máy tính', status: 'Đang lên kế hoạch', registered: '41/50', classCode: '68CS2' },
-                    { id: '46880403', name: 'Mạng máy tính', status: 'Đang lên kế hoạch', registered: '50/60', classCode: '68CS3' },
-                  ].map((classItem, index) => (
-                    <View key={classItem.id} style={[
-                      styles.classRow,
-                      selectedClass === classItem.id && styles.selectedRow
-                    ]}>
-                      <TouchableOpacity 
-                        style={styles.radioColumnCell}
-                        onPress={() => toggleClassSelection(classItem.id)}
-                      >
-                        <View style={[
-                          styles.courseRadio,
-                          selectedClass === classItem.id && styles.courseRadioSelected
-                        ]} />
-                      </TouchableOpacity>
-                      <Text style={[styles.cell, styles.indexColumnCell]}>{index + 1}</Text>
-                      <View style={styles.classInfoColumnCell}>
-                        <Text style={styles.classTitle}>{classItem.name}</Text>
-                        <View style={styles.classStatusRow}>
-                          <Text style={styles.classStatusLabel}>Trạng thái: </Text>
-                          <Text style={styles.classStatusValue}>{classItem.status}</Text>
-                        </View>
-                        <Text style={styles.classCode}>Mã lớp: {classItem.id} - {classItem.classCode}</Text>
-                      </View>
-                      <Text style={[styles.classRegisteredCell]}>{classItem.registered}</Text>
-                    </View>
-                  ))}
-                </View>
-              )}
-
-                <View style={styles.classDetailsSection}>
-                  <Text style={styles.detailsSectionTitle}>Chi tiết lớp học phần</Text>
-                  
-                  <View style={styles.detailsRow}>
-                    <View style={styles.detailsColumn}>
-                      <Text style={styles.detailsHeader}>Thông tin lớp học</Text>
-                    </View>
-                    <View style={styles.detailsColumn}>
-                      <Text style={styles.detailsHeader}>Thông tin giảng viên, thời gian</Text>
-                    </View>
-                  </View>
-
-                  {/* Render class details dynamically */}
-                  {selectedClass && selectedClass in classDetails && classDetails[selectedClass as keyof typeof classDetails].map((detail, index) => (
-                    <View key={index} style={styles.detailsRow}>
-                      <View style={styles.detailsColumn}>
-                        <Text style={{ color: '#0052CC' }}>Lịch học: <Text style={{ fontWeight: 'bold' }}>{detail.schedule}</Text></Text>
-                        <Text style={{ color: '#0052CC' }}>Cơ sở: <Text style={{ fontWeight: 'bold' }}>{detail.location}</Text></Text>
-                        <Text style={{ color: '#0052CC' }}>Dãy nhà: <Text style={{ fontWeight: 'bold' }}>{detail.building}</Text></Text>
-                        <Text style={{ color: '#0052CC' }}>Phòng: <Text style={{ fontWeight: 'bold' }}>{detail.room}</Text></Text>
-                      </View>
-                      <View style={styles.detailsColumn}>
-                        <Text style={{ color: '#0052CC' }}>
-                          <Text style={{ fontWeight: 'bold' }}>GV: </Text>
-                          <Text style={{ fontWeight: 'bold' }}>{detail.teacher}</Text>
-                        </Text>
-                        <Text style={{ color: '#0052CC' }}>Thời gian: <Text style={{ fontWeight: 'bold' }}>{detail.time}</Text></Text>
-                      </View>
-                    </View>
-                  ))}
-
-                  {/* Register Button */}
-                  <TouchableOpacity 
-                    style={[
-                      styles.registerButton,
-                      selectedClass && styles.registerButtonActive // Chỉ kích hoạt khi selectedClass không null
-                    ]}
-                    disabled={!selectedClass} // Vô hiệu hóa nút nếu chưa chọn lớp
-                  >
-                    <Text style={[
-                      styles.registerButtonText,
-                      selectedClass && styles.registerButtonTextActive // Đổi màu chữ khi nút hoạt động
-                    ]}>ĐĂNG KÝ</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </ScrollView>
-          </>
-        ) : (
-          <View style={styles.noDataContainer}>
-            <Text style={[styles.noDataText, {fontSize: 18, marginTop: 30, textAlign: 'center'}]}>
-              Đợt này sinh viên không được đăng ký!
-            </Text>
-          </View>
-        )}
-      </SafeAreaView>
-    );
-  };
-
-  const styles = StyleSheet.create({
-    cellContainer: {
-      // View-specific styles only
-    },
-    container: {
-      flex: 1,
-      backgroundColor: '#fff',
-    },
-    iconCell: {
-      justifyContent: 'center',
-      alignItems: 'center',
-      width: 60,
-    },
-    header: {
-      backgroundColor: '#0066CC',
-    },
-    headerContent: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      padding: 16,
-    },
-    backButton: {
-      padding: 4,
-      width: 40,
-    },
-    headerTitle: {
-      color: 'white',
-      fontSize: 20,
-      fontWeight: 'bold',
-      flex: 1,
-      textAlign: 'center',
-      marginHorizontal: 8,
-    },
-    notificationButton: {
-      padding: 4,
-      width: 40,
-      alignItems: 'flex-end',
-    },
-    whiteSpace: {
-      height: 20,
-      backgroundColor: '#ffffff',
-      borderTopLeftRadius: 20,
-      borderTopRightRadius: 20,
-    },
-    semesterSelector: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      padding: 16,
-      borderWidth: 1,
-      borderColor: '#E0E0E0',
-      margin: 16,
-      borderRadius: 8,
-    },
-    semesterText: {
-      fontSize: 16,
-      fontWeight: '500',
-    },
-    registrationTypes: {
-      flexDirection: 'row',
-      justifyContent: 'space-around',
-      paddingHorizontal: 16,
-      marginBottom: 24,
-    },
-    typeButton: {
-      alignItems: 'center',
-    },
-    radioButton: {
-      width: 20,
-      height: 20,
-      borderRadius: 10,
-      borderWidth: 2,
-      borderColor: '#666',
-      marginBottom: 8,
-    },
-    radioSelected: {
-      borderColor: '#0052CC',
-      backgroundColor: '#0052CC',
-    },
-    typeText: {
-      fontSize: 14,
-      color: '#666',
-      fontWeight: '500',
-    },
-    typeTextSelected: {
-      color: '#0052CC',
-    },
-    listTitle: {
-      fontSize: 16,
-      fontWeight: 'bold',
-      marginHorizontal: 16,
-      marginBottom: 16,
-      marginTop: 8, // Thêm marginTop để có khoảng cách với phần trên
-    },
-    courseList: {
-      flex: 1,
-      // Không cần paddingTop nếu đã có marginTop trong listTitle
-    },
-    tableHeader: {
-      flexDirection: 'row',
-      backgroundColor: '#F0F5FF',
-      paddingVertical: 12,
-      paddingHorizontal: 8,
-      borderBottomWidth: 1,
-      borderBottomColor: '#CCDDFF',
-      borderTopLeftRadius: 8,
-      borderTopRightRadius: 8,
-    },
-    headerCell: {
-      fontWeight: 'bold',
-      fontSize: 14,
-      color: '#0052CC',
-    },
-    courseRow: {
-      flexDirection: 'row',
-      paddingVertical: 12,
-      paddingHorizontal: 8,
-      borderBottomWidth: 1,
-      borderBottomColor: '#E0E0E0',
-      alignItems: 'center',
-    },
-    selectedRow: {
-      backgroundColor: '#F0F7FF',
-    },
-    cell: {
-      fontSize: 14,
-      color: '#333',
-    },
-    nameCell: {
-      flex: 3,
-    },
-    prerequisiteCell: {
-      flex: 1.5,
-    },
-    radioCell: {
-      width: 40,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    courseRadio: {
-      width: 18,
-      height: 18,
-      borderRadius: 9,
-      borderWidth: 2,
-      borderColor: '#0052CC',
-    },
-    courseRadioSelected: {
-      backgroundColor: '#0052CC',
-    },
-    classSection: {
-      marginTop: 24,
-      paddingHorizontal: 16,
-    },
-    sectionTitle: {
-      fontSize: 16,
-      fontWeight: 'bold',
-      marginBottom: 16,
-    },
-    noConflictContainer: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      marginBottom: 16,
-    },
-    checkboxContainer: {
-      marginRight: 8,
-    },
-    checkbox: {
-      width: 20,
-      height: 20,
-      borderWidth: 2,
-      borderColor: '#0052CC',
-      borderRadius: 4,
-    },
-    noConflictText: {
-      color: '#F44336',
-      fontSize: 14,
-    },
-    classListHeader: {
-      flexDirection: 'row',
-      backgroundColor: '#F0F5FF',
-      paddingVertical: 12,
-      paddingHorizontal: 8,
-      borderBottomWidth: 1,
-      borderBottomColor: '#CCDDFF',
-      borderTopLeftRadius: 8,
-      borderTopRightRadius: 8,
-      alignItems: 'center',
-    },
-    classHeaderCell: {
-      fontWeight: 'bold',
-      fontSize: 14,
-      color: '#0052CC',
-    },
-    classRow: {
-      flexDirection: 'row',
-      paddingVertical: 12,
-      paddingHorizontal: 8,
-      borderBottomWidth: 1,
-      borderBottomColor: '#E0E0E0',
-      alignItems: 'center',
-    },
-    classInfoColumnCell: {
-      flex: 3,
-      paddingVertical: 4,
-      paddingHorizontal: 8,
-    },
-    classRegisteredCell: {
-      width: 70,
-      textAlign: 'center',
-      color: '#0052CC',
-      fontWeight: 'bold',
-      fontSize: 14,
-    },
-    classTitle: {
-      fontWeight: 'bold',
-      fontSize: 16,
-      color: '#0052CC',
-      marginBottom: 4,
-    },
-    classStatusRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      marginBottom: 4,
-    },
-    classStatusLabel: {
-      color: '#0052CC',
-      fontSize: 14,
-    },
-    classStatusValue: {
-      color: 'red',
-      fontWeight: 'bold',
-      fontSize: 14,
-    },
-    classCode: {
-      color: '#0052CC',
-      fontSize: 14,
-    },
-    classDetailsSection: {
-      marginTop: 24,
-      paddingHorizontal: 16,
-    },
-    detailsSectionTitle: {
-      fontSize: 16,
-      fontWeight: 'bold',
-      marginBottom: 16,
-    },
-    detailsRow: {
-      flexDirection: 'row',
-      marginBottom: 16,
-    },
-    detailsColumn: {
-      flex: 1,
-      paddingHorizontal: 8,
-    },
-    detailsHeader: {
-      fontSize: 14,
-      fontWeight: '500',
-      color: '#000',
-      marginBottom: 8,
-    },
-    registerButton: {
-      backgroundColor: '#F0F0F0',
-      paddingVertical: 12,
-      borderRadius: 4,
-      alignItems: 'center',
-      marginTop: 24,
-      marginBottom: 32,
-      width: '100%',
-    },
-    registerButtonActive: {
-      backgroundColor: '#0052CC',  // Màu xanh biển khi có môn học được chọn
-    },
-    registerButtonText: {
-      color: '#666666',
-      fontSize: 16,
-      fontWeight: '500',
-    },
-    registerButtonTextActive: {
-      color: '#FFFFFF',  // Màu chữ trắng khi nút active
-    },
-    noDataContainer: {
-      alignItems: 'center',
-      justifyContent: 'center',
-      paddingVertical: 20,
-    },
-    noDataText: {
-      fontSize: 16,
-      color: '#666',
-      fontStyle: 'italic',
-    },
-    dropdown: {
-      position: 'absolute',
-      top: 50, // Điều chỉnh vị trí dropdown
-      left: 0,
-      right: 0,
-      backgroundColor: '#fff',
-      borderWidth: 1,
-      borderColor: '#E0E0E0',
-      borderRadius: 8,
-      zIndex: 1000,
-      elevation: 5, // Đổ bóng trên Android
-    },
-    dropdownItem: {
-      padding: 16,
-      borderBottomWidth: 1,
-      borderBottomColor: '#E0E0E0',
-    },
-    dropdownText: {
-      fontSize: 16,
-      color: '#000',
-    },
-    radioColumnCell: {
-      width: 40,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    indexColumnCell: {
-      width: 40,
-      textAlign: 'center',
-      justifyContent: 'center',
-    },
-    codeColumnCell: {
-      width: 80,
-    },
-    nameColumnCell: {
-      flex: 3,
-    },
-    creditColumnCell: {
-      width: 40,
-      textAlign: 'center',
-    },
-    requiredColumnCell: {
-      width: 60,
-      alignItems: 'center',
-    },
-    prerequisiteColumnCell: {
-      flex: 1.5,
-    },
-  });
-
-  export default App;
+export default DangKyHocPhan;
