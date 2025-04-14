@@ -1,22 +1,38 @@
 import { useState } from 'react'
 import '../App.css'
+import React from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 
 function Register() {
   const [username, setUsername] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+  const navigate = useNavigate() // Add this line to use the navigation hook
 
   const handleRegister = (e: React.FormEvent) => {
     e.preventDefault()
     // Xử lý đăng ký ở đây
     console.log('Register attempt:', { username, email, password, confirmPassword })
+    
+    // Navigate to XacNhanEmail page after registration submission
+    navigate('/verify-email-2')
   }
 
-  const isFormValid = username.trim() !== '' && 
-                     email.trim() !== '' && 
-                     password.trim() !== '' && 
-                     confirmPassword.trim() !== ''
+  // Add email validation function
+  const isValidEmail = (email: string): boolean => {
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    return emailRegex.test(email);
+  };
+
+  // Update the isFormValid check to include email validation and password matching
+  const isFormValid = 
+    username.trim() !== '' && 
+    email.trim() !== '' && 
+    isValidEmail(email) &&  // Check if email format is valid
+    password.trim() !== '' && 
+    confirmPassword.trim() !== '' &&
+    password === confirmPassword; // Check if passwords match
 
   return (
     <div className="app">
@@ -24,7 +40,7 @@ function Register() {
         <div className="logo">
           <img src="/huce-logo.png" alt="HUCE Logo" />
         </div>
-        <h1>Đăng ký tài khoản</h1>
+        <h1 style={{ fontSize: '35px' }}>Đăng ký tài khoản</h1>
         
         <form onSubmit={handleRegister}>
           <div className="input-field">
@@ -33,10 +49,12 @@ function Register() {
             </div>
             <input
               type="text"
-              placeholder="Tên đăng nhập"
+              id="username"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
+              placeholder=" "
             />
+            <label htmlFor="username">Tên đăng nhập</label>
           </div>
 
           <div className="input-field">
@@ -45,10 +63,12 @@ function Register() {
             </div>
             <input
               type="email"
-              placeholder="Email"
+              id="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              placeholder=" "
             />
+            <label htmlFor="email">Email</label>
           </div>
 
           <div className="input-field">
@@ -57,10 +77,12 @@ function Register() {
             </div>
             <input
               type="password"
-              placeholder="Mật khẩu"
+              id="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              placeholder=" "
             />
+            <label htmlFor="password">Mật khẩu</label>
           </div>
 
           <div className="input-field">
@@ -69,10 +91,12 @@ function Register() {
             </div>
             <input
               type="password"
-              placeholder="Xác nhận mật khẩu"
+              id="confirmPassword"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
+              placeholder=" "
             />
+            <label htmlFor="confirmPassword">Xác nhận mật khẩu</label>
           </div>
 
           <button 
@@ -86,11 +110,11 @@ function Register() {
 
         <div className="register-link">
           <span>Đã có tài khoản? </span>
-          <a href="/">Đăng nhập</a>
+          <Link to="/">Đăng nhập</Link>
         </div>
       </div>
     </div>
   )
 }
 
-export default Register 
+export default Register
