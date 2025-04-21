@@ -4,7 +4,7 @@ import apiClient from '../config/api-config';
 export interface CourseOfferingModel {
   offering_id: number;
   course_id: number;
-  code: string;
+  course_code: string;
   title: string;
   description?: string;
   credits: number;
@@ -18,6 +18,49 @@ export interface CourseOfferingModel {
   building?: string;
   room_number?: string;
   professor_name?: string;
+  schedule_details?: string;
+  prerequisites?: Array<{
+    prerequisite_id: number;
+    course_code: string;
+    title: string;
+    credits: number;
+  }>;
+  registration_status?: string;
+  registration_id?: number;
+  registration_date?: string;
+}
+
+export interface TermInfoModel {
+  id: number;
+  term_name: string;
+  period: string;
+  registration_period: string;
+  start_date: string;
+  end_date: string;
+  registration_start: string;
+  registration_end: string;
+  is_registration_active: boolean;
+  is_term_current: boolean;
+}
+
+export interface CoursesResponseModel {
+  term: TermInfoModel;
+  courses: CourseOfferingModel[];
+  total_courses: number;
+  total_registered_students: number;
+}
+
+// Add new interface for course schedule items
+export interface CourseScheduleItem {
+  id: number;
+  startTime: string;
+  endTime: string;
+  subjectCode: string;
+  subjectName: string;
+  room: string;
+  teacher: string;
+  building?: string;
+  classroom_id?: number;
 }
 
 export interface AcademicTermModel {
@@ -93,13 +136,18 @@ const courseService = {
   /**
    * Get all available courses for registration in a specific semester
    * @param semesterId - The ID of the semester to filter courses by
-   * @returns A promise that resolves to an array of available course offerings for the specified semester
+   * @returns A promise that resolves to a comprehensive response with term details and course offerings
    */
-  getAvailableCoursesBySemester: async (semesterId: number): Promise<CourseOfferingModel[]> => {
+  getAvailableCoursesBySemester: async (semesterId: number): Promise<CoursesResponseModel> => {
     try {
       const response = await apiClient.get('/courses/available-by-semester', { 
         params: { semesterId } 
       });
+      
+      if (!response.data?.data || !response.data.success) {
+        throw new Error('Invalid response format from server');
+      }
+      
       return response.data.data;
     } catch (error) {
       console.error(`Error fetching available courses for semester ID ${semesterId}:`, error);
@@ -204,6 +252,54 @@ const courseService = {
       throw new Error('Invalid curriculum data received from server');
     } catch (error) {
       console.error('Error fetching curriculum framework:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get course schedule for a specific date
+   * @param date - The date to get the schedule for (YYYY-MM-DD format)
+   * @returns A promise that resolves to an array of schedule items for the specified date
+   */
+  getDailySchedule: async (date: string): Promise<CourseScheduleItem[]> => {
+    try {
+      const response = await apiClient.get('/students/schedule', { 
+        params: { date } 
+      });
+      
+      // Transform the data to match our interface
+      if (response.data && response.data.data) {
+        const scheduleData = response.data.data.map((item: any) => ({
+          id: item.id,
+          startTime: item.start_time || item.startTime,
+          endTime: item.end_time || item.endTime,
+          subjectCode: item.subject_code || item.subjectCode,
+          subjectName: item.subject_name || item.subjectName,
+          room: item.room,
+          teacher: item.teacher,
+          building: item.building
+        }));
+        return scheduleData;
+      }
+      
+      return response.data.data;
+    } catch (error) {
+      console.error(`Error fetching schedule for date ${date}:`, error);
+      throw error;
+    }
+  },
+  
+  /**
+   * Get schedule details for a newly registered course
+   * @param registrationId - The ID of the course registration
+   * @returns A promise that resolves to the schedule details for the registered course
+   */
+  getRegisteredCourseSchedule: async (registrationId: number): Promise<CourseScheduleItem[]> => {
+    try {
+      const response = await apiClient.get(`/students/course-schedule/${registrationId}`);
+      return response.data.data;
+    } catch (error) {
+      console.error(`Error fetching schedule for registration ID ${registrationId}:`, error);
       throw error;
     }
   },

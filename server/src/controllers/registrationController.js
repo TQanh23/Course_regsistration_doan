@@ -38,6 +38,52 @@ const registrationController = {
   },
 
   /**
+   * Get registrations for the currently authenticated user
+   * @route GET /api/registrations/my-registrations
+   * @access Private
+   */
+  getMyRegistrations: async (req, res) => {
+    try {
+      // Get the currently authenticated user's ID
+      const studentId = req.user.id;
+      
+      // Check if the user is a student
+      if (req.user.role !== 'student') {
+        return res.status(403).json({
+          success: false,
+          message: 'Access denied. Student privileges required.'
+        });
+      }
+      
+      const [registrations] = await pool.query(`
+        SELECT r.*, c.course_code, c.title as course_title, 
+        c.credits, c.course_description, at.term_name,
+        cc.name as category_name
+        FROM registrations r
+        JOIN course_offerings co ON r.course_offering_id = co.id
+        JOIN courses c ON co.course_id = c.id
+        JOIN academic_terms at ON co.term_id = at.id
+        LEFT JOIN course_categories cc ON c.category_id = cc.id
+        WHERE r.student_id = ?
+        ORDER BY r.registration_date DESC
+      `, [studentId]);
+      
+      res.status(200).json({
+        success: true,
+        count: registrations.length,
+        data: registrations
+      });
+    } catch (error) {
+      console.error(`Error fetching registrations for current user:`, error.message);
+      res.status(500).json({
+        success: false,
+        message: 'Server error while fetching your registrations',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
+    }
+  },
+
+  /**
    * Get registration by ID
    * @route GET /api/registrations/:id
    * @access Private
@@ -487,6 +533,198 @@ const registrationController = {
       res.status(500).json({
         success: false,
         message: 'Server error while fetching registrations',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
+    }
+  },
+
+  /**
+   * Student course signup (one-time only)
+   * @route POST /api/registrations/course-signup
+   * @access Private (Students only)
+   * @body {course_offering_id} - ID of the course offering to register for
+   */
+  studentCourseSignup: async (req, res) => {
+    try {
+      // Only students can use this endpoint
+      if (req.user.role !== 'student') {
+        return res.status(403).json({
+          success: false,
+          message: 'Access denied. Student access only.'
+        });
+      }
+      
+      const studentId = req.user.id;
+      const { course_offering_id } = req.body;
+      
+      // Validate required fields
+      if (!course_offering_id) {
+        return res.status(400).json({
+          success: false,
+          message: 'Course offering ID is required'
+        });
+      }
+      
+      // Check if course offering exists and get its details
+      const [courseOffering] = await pool.query(`
+        SELECT co.*, c.course_code, c.title as course_title, c.credits, 
+               at.term_name, at.registration_open, at.registration_close
+        FROM course_offerings co
+        JOIN courses c ON co.course_id = c.id
+        JOIN academic_terms at ON co.term_id = at.id
+        WHERE co.id = ?
+      `, [course_offering_id]);
+      
+      if (courseOffering.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: 'Course offering not found'
+        });
+      }
+      
+      // Check if registration period is open
+      const now = new Date();
+      const regOpen = new Date(courseOffering[0].registration_open);
+      const regClose = new Date(courseOffering[0].registration_close);
+      
+      if (now < regOpen || now > regClose) {
+        return res.status(400).json({
+          success: false,
+          message: `Registration for this course is only open from ${regOpen.toLocaleDateString()} to ${regClose.toLocaleDateString()}`
+        });
+      }
+      
+      // Check if student is already registered for this course offering
+      const [existingReg] = await pool.query(`
+        SELECT * FROM registrations 
+        WHERE student_id = ? AND course_offering_id = ?
+      `, [studentId, course_offering_id]);
+      
+      if (existingReg.length > 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'You are already registered for this course'
+        });
+      }
+      
+      // Check course capacity
+      if (courseOffering[0].current_enrollment >= courseOffering[0].max_enrollment) {
+        return res.status(400).json({
+          success: false,
+          message: 'Course is full. Would you like to be added to the waitlist?'
+        });
+      }
+      
+      // Check for schedule conflicts with existing registrations
+      const [conflicts] = await pool.query(`
+        SELECT r.id, co2.id as conflicting_offering_id, 
+               c2.course_code, c2.title,
+               co2.schedule_day, co2.schedule_time
+        FROM registrations r
+        JOIN course_offerings co ON r.course_offering_id = co.id
+        JOIN course_offerings co2 ON co2.id = ?
+        JOIN courses c2 ON co2.course_id = c2.id
+        WHERE r.student_id = ? 
+        AND r.registration_status = 'enrolled'
+        AND co.schedule_day = co2.schedule_day
+        AND (
+          (co.schedule_time <= co2.schedule_time AND co.schedule_end_time > co2.schedule_time)
+          OR
+          (co2.schedule_time <= co.schedule_time AND co2.schedule_end_time > co.schedule_time)
+        )
+      `, [course_offering_id, studentId]);
+      
+      if (conflicts.length > 0) {
+        return res.status(400).json({
+          success: false,
+          message: `Schedule conflict with ${conflicts[0].course_code}: ${conflicts[0].title} on ${conflicts[0].schedule_day} at ${conflicts[0].schedule_time}`
+        });
+      }
+      
+      // Check if student has already completed this course in a previous term
+      const [completedCourses] = await pool.query(`
+        SELECT r.id 
+        FROM registrations r
+        JOIN course_offerings co_prev ON r.course_offering_id = co_prev.id
+        JOIN course_offerings co_current ON co_current.id = ?
+        WHERE r.student_id = ?
+        AND co_prev.course_id = co_current.course_id
+        AND r.registration_status = 'completed'
+        AND r.grade >= 'C'
+      `, [course_offering_id, studentId]);
+      
+      if (completedCourses.length > 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'You have already successfully completed this course'
+        });
+      }
+      
+      // Check prerequisites if any
+      const [prerequisites] = await pool.query(`
+        SELECT p.prerequisite_course_id, c_pre.course_code, c_pre.title
+        FROM prerequisites p
+        JOIN course_offerings co ON co.course_id = ? 
+        JOIN courses c_pre ON c_pre.id = p.prerequisite_course_id
+        WHERE p.course_id = co.course_id
+      `, [courseOffering[0].course_id]);
+      
+      if (prerequisites.length > 0) {
+        // For each prerequisite, check if student has completed it
+        for (const prereq of prerequisites) {
+          const [completed] = await pool.query(`
+            SELECT r.id
+            FROM registrations r
+            JOIN course_offerings co ON r.course_offering_id = co.id
+            WHERE r.student_id = ?
+            AND co.course_id = ?
+            AND r.registration_status = 'completed'
+            AND r.grade >= 'C'
+          `, [studentId, prereq.prerequisite_course_id]);
+          
+          if (completed.length === 0) {
+            return res.status(400).json({
+              success: false,
+              message: `Missing prerequisite: ${prereq.course_code}: ${prereq.title}`
+            });
+          }
+        }
+      }
+      
+      // All validation passed, create registration
+      const [result] = await pool.query(
+        'INSERT INTO registrations (student_id, course_offering_id, registration_status) VALUES (?, ?, ?)',
+        [studentId, course_offering_id, 'enrolled']
+      );
+      
+      // Update enrollment count
+      await pool.query(
+        'UPDATE course_offerings SET current_enrollment = current_enrollment + 1 WHERE id = ?',
+        [course_offering_id]
+      );
+      
+      // Get the created registration details
+      const [newRegistration] = await pool.query(`
+        SELECT r.*, s.username as student_username, s.full_name as student_name,
+        c.course_code, c.title as course_title, at.term_name, co.schedule_day, co.schedule_time
+        FROM registrations r
+        JOIN students s ON r.student_id = s.id
+        JOIN course_offerings co ON r.course_offering_id = co.id
+        JOIN courses c ON co.course_id = c.id
+        JOIN academic_terms at ON co.term_id = at.id
+        WHERE r.id = ?
+      `, [result.insertId]);
+      
+      res.status(201).json({
+        success: true,
+        message: 'Course registration successful',
+        data: newRegistration[0]
+      });
+    } catch (error) {
+      console.error('Error in student course signup:', error.message);
+      res.status(500).json({
+        success: false,
+        message: 'Server error during course registration',
         error: process.env.NODE_ENV === 'development' ? error.message : undefined
       });
     }

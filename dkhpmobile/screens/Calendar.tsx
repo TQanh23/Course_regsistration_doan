@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, ScrollView } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import Icon from 'react-native-vector-icons/Ionicons';
 import CalendarStrip from 'react-native-calendar-strip';
+import courseService, { CourseScheduleItem } from '../src/api/services/courseService';
 
 // Define the navigation param list type
 type RootStackParamList = {
@@ -38,13 +39,40 @@ const Calendar = () => {
   const today = new Date(); // Create a single instance of today's date
   const [selectedDate, setSelectedDate] = useState(today);
   const [startingDate, setStartingDate] = useState(() => getWeekStartDate(today));
+  const [schedules, setSchedules] = useState<CourseScheduleItem[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   
   // Use effect to ensure calendar resets to today when mounting
   useEffect(() => {
     // Make sure the calendar starts with today as the selected date
     setSelectedDate(today);
     setStartingDate(getWeekStartDate(today));
+    
+    // Load schedule for today's date initially
+    fetchScheduleForDate(formatDateForAPI(today));
   }, []);
+  
+  // Format date as YYYY-MM-DD for API requests
+  const formatDateForAPI = (date: Date) => {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  };
+
+  // Fetch schedule for a specific date
+  const fetchScheduleForDate = async (dateString: string) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await courseService.getDailySchedule(dateString);
+      setSchedules(data);
+    } catch (err) {
+      console.error('Error fetching schedule:', err);
+      setError('Không thể tải lịch học. Vui lòng thử lại sau.');
+      Alert.alert('Lỗi', 'Không thể tải lịch học. Vui lòng thử lại sau.');
+    } finally {
+      setLoading(false);
+    }
+  };
   
   // Mảng tên ngày đầy đủ để hiển thị ở header
   const fullDayNames = ['Chủ nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
@@ -59,6 +87,7 @@ const Calendar = () => {
   const handleDateSelected = (date: Date) => {
     const newDate = new Date(date);
     setSelectedDate(newDate);
+    fetchScheduleForDate(formatDateForAPI(newDate));
   };
 
   const handleBackPress = () => {
@@ -82,88 +111,50 @@ const Calendar = () => {
     });
   };
 
-  // Mock data cho thời khóa biểu theo ngày
-  const schedulesByDate: { [key: string]: any[] } = {
-    '2025-04-08': [
-      {
-        startTime: '06:45',
-        endTime: '09:10',
-        subjectCode: '60881101',
-        subjectName: 'Xử lý ngôn ngữ tự nhiên',
-        room: 'H3.56',
-        teacher: 'Nguyễn Đình Quý',
-      },
-      {
-        startTime: '09:25',
-        endTime: '11:50',
-        subjectCode: '60881901',
-        subjectName: 'Đồ án Phát triển ứng dụng đa nền tảng',
-        room: '109.H1',
-        teacher: 'Hoàng Nam Thắng, Lê Văn Minh',
-      },
-    ],
-    '2025-04-09': [
-      {
-        startTime: '06:45',
-        endTime: '09:10',
-        subjectCode: '60882001',
-        subjectName: 'Phát triển ứng dụng phía máy chủ',
-        room: 'H3.54',
-        teacher: 'Hoàng Nam Thắng, Lê Văn Minh',
-      },
-      {
-        startTime: '09:25',
-        endTime: '11:50',
-        subjectCode: '60881501',
-        subjectName: 'Đồ án Thị giác máy tính',
-        room: '109.H1',
-        teacher: 'Thái Thị Nguyệt',
-      },
-    ],
-    // Add other dates from your existing calendar implementation
-    '2025-04-10': [
-      {
-        startTime: '06:45',
-        endTime: '09:10',
-        subjectCode: '60881601',
-        subjectName: 'Khai phá dữ liệu',
-        room: 'H3.54',
-        teacher: 'Nguyễn Đức Thịnh',
-      },
-    ],
-    '2025-04-11': [
-      {
-        startTime: '09:25',
-        endTime: '11:50',
-        subjectCode: '60881101',
-        subjectName: 'Xử lý ngôn ngữ tự nhiên',
-        room: 'H3.56',
-        teacher: 'Nguyễn Đình Quý',
-      },
-    ],
-  };
-
+  // Get custom styles for dates with scheduled courses
   const getCustomDatesStyles = () => {
     const styles: { startDate: Date; dateNameStyle: { color: string; }; dateNumberStyle: { color: string; fontWeight: string; }; }[] = [];
     
-    // Thêm style cho các ngày có lịch học (chữ màu xanh)
-    Object.keys(schedulesByDate).forEach(dateKey => {
+    // Use the formatted date string for API calls
+    const dateString = formatDateForAPI(selectedDate);
+    
+    // If we have schedules for the selected date, add a style for it
+    if (schedules.length > 0) {
       styles.push({
-        startDate: new Date(dateKey),
+        startDate: selectedDate,
         dateNameStyle: { color: '#0066CC' },
         dateNumberStyle: { color: '#0066CC', fontWeight: 'bold' },
       });
-    });
+    }
     
     return styles;
   };
 
-  // Update the renderSchedule function to make the schedule items clickable
+  // Update the renderSchedule function to use API data
   const renderSchedule = () => {
-    // Format date as YYYY-MM-DD directly without timezone issues
-    const selectedDateKey = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`;
-    console.log("Looking for schedule on date:", selectedDateKey); // Debug output
-    const schedules = schedulesByDate[selectedDateKey] || [];
+    if (loading) {
+      return (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#0066CC" />
+          <Text style={styles.loadingText}>Đang tải lịch học...</Text>
+        </View>
+      );
+    }
+    
+    if (error) {
+      return (
+        <View style={styles.errorContainer}>
+          <Icon name="alert-circle-outline" size={40} color="#d9534f" />
+          <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity 
+            style={styles.retryButton}
+            onPress={() => fetchScheduleForDate(formatDateForAPI(selectedDate))}
+          >
+            <Text style={styles.retryButtonText}>Thử lại</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
   
     if (schedules.length === 0) {
       return (
@@ -173,14 +164,9 @@ const Calendar = () => {
   
     return schedules.map((schedule, index) => (
       <TouchableOpacity 
-        key={index} 
+        key={schedule.id || index} 
         style={[styles.scheduleItem, index % 2 === 1 ? styles.greenScheduleItem : {}]}
-        onPress={() => {
-          // If the subject is "Phát triển ứng dụng phía máy chủ", navigate to ThongTinLop
-          if (schedule.subjectName === 'Phát triển ứng dụng phía máy chủ') {
-            navigateToThongTinLop(schedule);
-          }
-        }}
+        onPress={() => navigateToThongTinLop(schedule)}
       >
         <View style={styles.timeContainer}>
           <Text style={styles.timeText}>{schedule.startTime}</Text>
@@ -419,6 +405,41 @@ const styles = StyleSheet.create({
     borderRadius: 2,
     backgroundColor: '#0066cc',
     marginHorizontal: 1,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 30,
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#666',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 30,
+  },
+  errorText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#d9534f',
+    textAlign: 'center',
+  },
+  retryButton: {
+    marginTop: 20,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    backgroundColor: '#0066CC',
+    borderRadius: 5,
+  },
+  retryButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
 

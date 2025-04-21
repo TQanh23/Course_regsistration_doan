@@ -34,7 +34,7 @@ class AdminAuthService {
                     role: 'admin'
                 },
                 config.jwtSecret,
-                { expiresIn: '24h' }
+                { expiresIn: '1h' }
             );
             
             // Return token and admin info (excluding password)

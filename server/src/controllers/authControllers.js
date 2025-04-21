@@ -309,3 +309,37 @@ exports.changePassword = async (req, res) => {
     });
   }
 };
+
+/**
+ * Refresh the user's authentication token
+ */
+exports.refreshToken = async (req, res) => {
+  try {
+    // Get the current user from the request (set by authenticateToken middleware)
+    const { id, username, role } = req.user;
+    
+    // Create a new JWT token with a fresh expiration time
+    const newToken = jwt.sign(
+      {
+        id,
+        username,
+        role
+      },
+      process.env.JWT_SECRET || 'your-secret-key',
+      { expiresIn: '7d' } // Extending token validity to 7 days
+    );
+    
+    res.status(200).json({
+      success: true,
+      message: 'Token refreshed successfully',
+      token: newToken
+    });
+  } catch (error) {
+    console.error('Token refresh error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to refresh token',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
