@@ -160,20 +160,61 @@ const studentController = {
         try {
             const studentId = req.user.id;
             
+            // Get all enrolled courses with detailed information
             const [registrations] = await pool.query(`
-                SELECT r.*, c.course_code, c.title, c.credits, c.course_description,
-                cc.name as category_name
+                SELECT 
+                    r.id as registration_id,
+                    r.registration_date,
+                    r.registration_status,
+                    co.id as course_offering_id,
+                    c.id as course_id,
+                    c.course_code,
+                    c.title,
+                    c.credits,
+                    c.course_description,
+                    cc.name as category_name,
+                    at.term_name,
+                    at.academic_year,
+                    GROUP_CONCAT(
+                        JSON_OBJECT(
+                            'day', ts.day_of_week,
+                            'start_time', ts.start_time,
+                            'end_time', ts.end_time,
+                            'room', CONCAT(cl.building, ' ', cl.room_number),
+                            'professor', p.full_name
+                        ) SEPARATOR '|'
+                    ) as schedule_details
                 FROM registrations r
                 JOIN course_offerings co ON r.course_offering_id = co.id
                 JOIN courses c ON co.course_id = c.id
+                JOIN academic_terms at ON co.term_id = at.id
                 LEFT JOIN course_categories cc ON c.category_id = cc.id
+                LEFT JOIN course_schedules cs ON co.id = cs.course_offering_id
+                LEFT JOIN timetable_slots ts ON cs.timetable_slot_id = ts.id
+                LEFT JOIN classrooms cl ON cs.classroom_id = cl.id
+                LEFT JOIN professors p ON cs.professor_id = p.id
                 WHERE r.student_id = ? AND r.registration_status = 'enrolled'
+                GROUP BY r.id
+                ORDER BY c.course_code
             `, [studentId]);
+            
+            // Process the schedule_details string to convert it to a proper array of objects
+            const processedRegistrations = registrations.map(reg => {
+                let scheduleArray = [];
+                if (reg.schedule_details) {
+                    scheduleArray = reg.schedule_details.split('|').map(item => JSON.parse(item));
+                }
+                
+                return {
+                    ...reg,
+                    schedule_details: scheduleArray
+                };
+            });
             
             res.status(200).json({
                 success: true,
-                count: registrations.length,
-                data: registrations
+                count: processedRegistrations.length,
+                data: processedRegistrations
             });
         } catch (error) {
             console.error('Error fetching student courses:', error.message);
@@ -447,7 +488,115 @@ const studentController = {
                 error: process.env.NODE_ENV === 'development' ? error.message : undefined
             });
         }
-    }
+    },
+
+    // Get student's daily schedule
+    getDailySchedule: async (req, res) => {
+        try {
+            const { date } = req.query;
+            
+            if (!date) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Date parameter is required (YYYY-MM-DD format)'
+                });
+            }
+            
+            // Validate date format
+            const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+            if (!dateRegex.test(date)) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Invalid date format. Please use YYYY-MM-DD format'
+                });
+            }
+
+            // Query the student_class_schedules table directly
+            const [schedules] = await pool.query(`
+                SELECT 
+                    id,
+                    start_time,
+                    end_time,
+                    subject_code,
+                    subject_name,
+                    room,
+                    teacher
+                FROM student_class_schedules
+                WHERE date = ?
+                ORDER BY start_time ASC
+            `, [date]);
+            
+            res.status(200).json({
+                success: true,
+                count: schedules.length,
+                data: schedules
+            });
+        } catch (error) {
+            console.error('Error fetching daily schedule:', error.message);
+            res.status(500).json({ 
+                success: false,
+                message: 'Server error while fetching daily schedule',
+                error: process.env.NODE_ENV === 'development' ? error.message : undefined
+            });
+        }
+    },
+
+    // Get schedule for a specific course registration
+    getCourseSchedule: async (req, res) => {
+        try {
+            const studentId = req.user.id;
+            const registrationId = req.params.registrationId;
+
+            // Verify that the registration belongs to the student
+            const [registration] = await pool.query(`
+                SELECT r.* FROM registrations r
+                WHERE r.id = ? AND r.student_id = ?
+            `, [registrationId, studentId]);
+
+            if (registration.length === 0) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Registration not found or does not belong to you'
+                });
+            }
+
+            // Get the course schedule for this registration
+            const [schedules] = await pool.query(`
+                SELECT 
+                    cs.id,
+                    ts.start_time as startTime,
+                    ts.end_time as endTime,
+                    c.course_code as subjectCode,
+                    c.title as subjectName,
+                    CONCAT(cl.building, ' ', cl.room_number) as room,
+                    p.full_name as teacher,
+                    cl.building,
+                    cl.id as classroom_id,
+                    ts.day_of_week as dayOfWeek
+                FROM course_schedules cs
+                JOIN course_offerings co ON cs.course_offering_id = co.id
+                JOIN courses c ON co.course_id = c.id
+                JOIN classrooms cl ON cs.classroom_id = cl.id
+                JOIN professors p ON cs.professor_id = p.id
+                JOIN timetable_slots ts ON cs.timetable_slot_id = ts.id
+                WHERE co.id = ? 
+                ORDER BY ts.day_of_week, ts.start_time ASC
+            `, [registration[0].course_offering_id]);
+            
+            res.status(200).json({
+                success: true,
+                count: schedules.length,
+                data: schedules
+            });
+        } catch (error) {
+            console.error('Error fetching course schedule:', error.message);
+            res.status(500).json({ 
+                success: false,
+                message: 'Server error while fetching course schedule',
+                error: process.env.NODE_ENV === 'development' ? error.message : undefined
+            });
+        }
+    },
 };
 
 module.exports = studentController;
