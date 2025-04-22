@@ -1,383 +1,292 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, Modal, FlatList, ScrollView } from 'react-native';
-import Icon from 'react-native-vector-icons/Ionicons';
-import { useNavigation } from '@react-navigation/native';
-import { StackNavigationProp } from '@react-navigation/stack';
+import React, { useState, useEffect } from 'react';
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  FlatList, 
+  TouchableOpacity, 
+  ActivityIndicator, 
+  Alert,
+  RefreshControl
+} from 'react-native';
+import { registrationService } from '../src/api/services/registrationService';
+import { Ionicons } from '@expo/vector-icons';
 
-// Define the navigation param list type
-type RootStackParamList = {
-  TrangChuScreen: undefined;
-  DanhSachMonHocdangky: undefined;
-  ThongBao: undefined;
-  // Add other screens as needed
+// Define types for API data
+type Registration = {
+  id: number;
+  student_id: number;
+  course_id: number;
+  term_id: number;
+  registration_date: string;
+  status: string;
+  course: {
+    id: number;
+    course_code: string;
+    title: string;
+    credits: number;
+    course_description?: string;
+  };
+  term?: {
+    id: number;
+    term_name: string;
+  };
 };
 
-// Define the navigation prop type for this screen
-type DanhSachMonHocdangkyNavigationProp = StackNavigationProp<RootStackParamList, 'DanhSachMonHocdangky'>;
-
-// Component Header riêng biệt
-interface HeaderProps {
-  title: string;
-  onBackPress: () => void;
-  onNotificationPress: () => void;
-}
-
-const Header = ({ title, onBackPress, onNotificationPress }: HeaderProps) => {
-  return (
-    <View style={styles.header}>
-      <TouchableOpacity style={styles.backButton} onPress={onBackPress}>
-        <Icon name="arrow-back" size={24} color="#fff" />
-      </TouchableOpacity>
-      <Text style={styles.headerTitle}>{title}</Text>
-      <TouchableOpacity style={styles.notificationButton} onPress={onNotificationPress}>
-        <Icon name="notifications-outline" size={24} color="#fff" />
-      </TouchableOpacity>
-    </View>
-  );
-};
-
-  // Màn hình chính DanhSachMonHocdangky
 const DanhSachMonHocdangky = () => {
-  // Use typed navigation
-  const navigation = useNavigation<DanhSachMonHocdangkyNavigationProp>();
-  const [isDropdownVisible, setDropdownVisible] = useState(false);
-  const [selectedSemester, setSelectedSemester] = useState('HK2 2024 - 2025');
+  const [registrations, setRegistrations] = useState<Registration[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [droppingCourse, setDroppingCourse] = useState<{[key: number]: boolean}>({});
 
-  const handleBackPress = () => {
-    navigation.goBack();
+  // Load registered courses when component mounts
+  useEffect(() => {
+    fetchRegistrations();
+  }, []);
+
+  // Fetch all registrations for the current student
+  const fetchRegistrations = async () => {
+    try {
+      setLoading(true);
+      const response = await registrationService.getMyRegistrations();
+      setRegistrations(response.data || []);
+    } catch (error) {
+      console.error('Error fetching registrations:', error);
+      Alert.alert(
+        'Error',
+        'Failed to load your course registrations. Please try again.'
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // Update this function to navigate to ThongBao screen
-  const handleNotificationPress = () => {
-    navigation.navigate('ThongBao');
+  // Handle pull-to-refresh
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await fetchRegistrations();
+    } catch (error) {
+      console.error('Error refreshing registrations:', error);
+    }
+    setRefreshing(false);
   };
 
-  const handleSemesterSelect = (semester: string) => {
-    setSelectedSemester(semester);
-    setDropdownVisible(false);
+  // Drop/cancel a course registration
+  const dropCourse = async (registration: Registration) => {
+    Alert.alert(
+      'Drop Course',
+      `Are you sure you want to drop ${registration.course.title}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Drop Course',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setDroppingCourse(prev => ({ ...prev, [registration.id]: true }));
+              await registrationService.dropCourse(registration.id);
+              
+              Alert.alert(
+                'Success', 
+                `You have successfully dropped ${registration.course.title}`
+              );
+              
+              // Refresh the list
+              fetchRegistrations();
+            } catch (error) {
+              console.error('Error dropping course:', error);
+              let errorMessage = 'Failed to drop the course';
+              
+              const err = error as any;
+              if (err?.response?.data?.message) {
+                errorMessage = err.response.data.message;
+              }
+              
+              Alert.alert('Error', errorMessage);
+            } finally {
+              setDroppingCourse(prev => ({ ...prev, [registration.id]: false }));
+            }
+          }
+        }
+      ]
+    );
   };
 
-  interface CourseItem {
-    stt: number;
-    maLHP: string;
-    tenMH: string;
-    lop: string;
-    soTC: number;
-    hocPhi: string;
-    trangThaiDK: string;
-    ngayDK: string;
-    trangThaiLHP: string;
-  }
-
-  const courseData: CourseItem[] = [
-    { stt: 1, maLHP: '60881901', tenMH: 'Đồ án Phát triển ứng dụng đa nền tảng', lop: '67CS1', soTC: 1, hocPhi: '465,000', trangThaiDK: 'Đăng ký mới', ngayDK: '01/12/2024', trangThaiLHP: 'Đã khóa' },
-    { stt: 2, maLHP: '60881501', tenMH: 'Đồ án Thị giác máy tính', lop: '67CS1', soTC: 1, hocPhi: '465,000', trangThaiDK: 'Đăng ký mới', ngayDK: '01/12/2024', trangThaiLHP: 'Đã khóa' },
-    { stt: 3, maLHP: '60881601', tenMH: 'Khai phá dữ liệu', lop: '67CS1', soTC: 3, hocPhi: '1,395,000', trangThaiDK: 'Đăng ký mới', ngayDK: '01/12/2024', trangThaiLHP: 'Đã khóa' },
-    { stt: 4, maLHP: '60881801', tenMH: 'Phát triển ứng dụng đa nền tảng', lop: '67CS1', soTC: 3, hocPhi: '1,395,000', trangThaiDK: 'Đăng ký mới', ngayDK: '01/12/2024', trangThaiLHP: 'Đã khóa' },
-    { stt: 5, maLHP: '60882001', tenMH: 'Phát triển ứng dụng phía máy chủ', lop: '67CS1', soTC: 3, hocPhi: '1,395,000', trangThaiDK: 'Đăng ký mới', ngayDK: '01/12/2024', trangThaiLHP: 'Đã khóa' },
-    { stt: 6, maLHP: '60881401', tenMH: 'Thị giác máy tính', lop: '67CS1', soTC: 3, hocPhi: '1,395,000', trangThaiDK: 'Đăng ký mới', ngayDK: '01/12/2024', trangThaiLHP: 'Đã khóa' },
-    { stt: 7, maLHP: '60881101', tenMH: 'Xử lý ngôn ngữ tự nhiên', lop: '67CS1', soTC: 3, hocPhi: '1,395,000', trangThaiDK: 'Đăng ký mới', ngayDK: '01/12/2024', trangThaiLHP: 'Đã khóa' },
-  ];
+  // Render a registration item
+  const renderRegistrationItem = ({ item }: { item: Registration }) => {
+    const isDropping = droppingCourse[item.id] || false;
+    
+    return (
+      <View style={styles.courseItem}>
+        <View style={styles.courseInfo}>
+          <Text style={styles.courseCode}>{item.course.course_code}</Text>
+          <Text style={styles.courseTitle}>{item.course.title}</Text>
+          <Text style={styles.courseDetails}>
+            {item.course.credits} credits | {item.term?.term_name || 'Current Term'}
+          </Text>
+          <Text style={styles.registrationDate}>
+            Registered: {new Date(item.registration_date).toLocaleDateString()}
+          </Text>
+        </View>
+        
+        <TouchableOpacity
+          style={styles.dropButton}
+          disabled={isDropping}
+          onPress={() => dropCourse(item)}
+        >
+          {isDropping ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <Text style={styles.dropButtonText}>Drop</Text>
+          )}
+        </TouchableOpacity>
+      </View>
+    );
+  };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <Header 
-        title="Danh sách môn học đã đăng ký"
-        onBackPress={handleBackPress}
-        onNotificationPress={handleNotificationPress}
-      />
-
-      {/* Dropdown Selector */}
-      <View style={styles.semesterSelector}>
-        <TouchableOpacity
-          onPress={() => setDropdownVisible(!isDropdownVisible)} // Toggle dropdown
-          style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flex: 1 }}
-        >
-          <Text style={styles.semesterText}>{selectedSemester}</Text>
-          <Icon name={isDropdownVisible ? 'chevron-up' : 'chevron-down'} size={24} color="#000" />
-        </TouchableOpacity>
-
-        {isDropdownVisible && (
-          <View style={styles.dropdown}>
-            <TouchableOpacity
-              onPress={() => {
-                setSelectedSemester('HK1 2024 - 2025');
-                setDropdownVisible(false); // Close dropdown
-              }}
-              style={styles.dropdownItem}
-            >
-              <Text style={styles.dropdownText}>HK1 2024 - 2025</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => {
-                setSelectedSemester('HK2 2024 - 2025');
-                setDropdownVisible(false); // Close dropdown
-              }}
-              style={styles.dropdownItem}
-            >
-              <Text style={styles.dropdownText}>HK2 2024 - 2025</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-      </View>
-
-      {/* Nút In */}
-      <TouchableOpacity style={styles.printButton}>
-        <Icon name="print" size={30} color="#fff" />
-      </TouchableOpacity>
-
-      {/* Phần bảng danh sách môn học */}
-      {selectedSemester === 'HK2 2024 - 2025' ? (
-        <View style={styles.tableContainer}>
-          {/* Thêm ScrollView ngang để xử lý khi bảng quá rộng */}
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            <View style={{ minWidth: '100%' }}>
-              {/* Header của bảng */}
-              <View style={styles.tableHeader}>
-                <View style={[styles.headerCell, { width: 60 }]}>
-                  <Text style={styles.headerCellText}>Thao tác</Text>
-                </View>
-                <View style={[styles.headerCell, { width: 50 }]}>
-                  <Text style={styles.headerCellText}>STT</Text>
-                </View>
-                <View style={[styles.headerCell, { width: 100 }]}>
-                  <Text style={styles.headerCellText}>Mã LHP</Text>
-                </View>
-                <View style={[styles.headerCell, { width: 200 }]}>
-                  <Text style={styles.headerCellText}>Tên môn học</Text>
-                </View>
-                <View style={[styles.headerCell, { width: 100 }]}>
-                  <Text style={styles.headerCellText}>Lớp</Text>
-                </View>
-                <View style={[styles.headerCell, { width: 60 }]}>
-                  <Text style={styles.headerCellText}>Số TC</Text>
-                </View>
-                <View style={[styles.headerCell, { width: 80 }]}>
-                  <Text style={styles.headerCellText}>Nhóm TH</Text>
-                </View>
-                <View style={[styles.headerCell, { width: 100 }]}>
-                  <Text style={styles.headerCellText}>Học phí</Text>
-                </View>
-                <View style={[styles.headerCell, { width: 100 }]}>
-                  <Text style={styles.headerCellText}>Hạn nộp</Text>
-                </View>
-                <View style={[styles.headerCell, { width: 60 }]}>
-                  <Text style={styles.headerCellText}>Thu</Text>
-                </View>
-                <View style={[styles.headerCell, { width: 100 }]}>
-                  <Text style={styles.headerCellText}>Trạng thái ĐK</Text>
-                </View>
-                <View style={[styles.headerCell, { width: 100 }]}>
-                  <Text style={styles.headerCellText}>Ngày ĐK</Text>
-                </View>
-                <View style={[styles.headerCell, { width: 100 }]}>
-                  <Text style={styles.headerCellText}>Trạng thái LHP</Text>
-                </View>
-              </View>
-
-              {/* Body của bảng */}
-              <FlatList
-                data={courseData}
-                renderItem={({ item, index }) => (
-                  <View
-                    style={[
-                      styles.tableRow,
-                      { backgroundColor: index % 2 === 0 ? '#F9F9F9' : '#FFFFFF' },
-                    ]}
-                  >
-                    {/* Cột Thao tác */}
-                    <TouchableOpacity
-                      style={[styles.tableCell, { width: 60 }]}
-                      onPress={() => console.log(`Thao tác với môn học: ${item.tenMH}`)}
-                    >
-                      <Icon name="ellipsis-horizontal" size={20} color="#0066CC" />
-                    </TouchableOpacity>
-
-                    <Text style={[styles.tableCell, styles.centerText, { width: 50 }]}>{item.stt}</Text>
-                    <Text style={[styles.tableCell, { width: 100 }]}>{item.maLHP}</Text>
-                    <Text style={[styles.tableCell, styles.leftText, { width: 200 }]} numberOfLines={2}>{item.tenMH}</Text>
-                    <Text style={[styles.tableCell, { width: 100 }]}>{item.lop}</Text>
-                    <Text style={[styles.tableCell, styles.centerText, { width: 60 }]}>{item.soTC}</Text>
-                    <Text style={[styles.tableCell, styles.centerText, { width: 80 }]}>-</Text>
-                    <Text style={[styles.tableCell, styles.rightText, { width: 100 }]}>{item.hocPhi}</Text>
-                    <Text style={[styles.tableCell, styles.centerText, { width: 100 }]}>-</Text>
-                    <Text style={[styles.tableCell, styles.centerText, { width: 60 }]}>✔</Text>
-                    <Text style={[styles.tableCell, { width: 100 }]}>{item.trangThaiDK}</Text>
-                    <Text style={[styles.tableCell, { width: 100 }]}>{item.ngayDK}</Text>
-                    <Text style={[styles.tableCell, { width: 100 }]}>{item.trangThaiLHP}</Text>
-                  </View>
-                )}
-                keyExtractor={(item) => item.stt.toString()}
-              />
-            </View>
-          </ScrollView>
+    <View style={styles.container}>
+      <Text style={styles.title}>My Registered Courses</Text>
+      
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#003366" />
+          <Text style={styles.loadingText}>Loading registrations...</Text>
         </View>
+      ) : registrations.length > 0 ? (
+        <FlatList
+          data={registrations}
+          renderItem={renderRegistrationItem}
+          keyExtractor={(item) => item.id.toString()}
+          contentContainerStyle={styles.listContent}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={['#003366']}
+            />
+          }
+        />
       ) : (
-        // Hiển thị thông báo khi chọn học kỳ khác
-        <View style={styles.emptyStateContainer}>
-          <Icon name="document-text-outline" size={60} color="#CCCCCC" />
-          <Text style={styles.emptyStateText}>Không có dữ liệu cho học kỳ này</Text>
+        <View style={styles.emptyContainer}>
+          <Ionicons name="school-outline" size={60} color="#999" />
+          <Text style={styles.emptyText}>You haven't registered for any courses yet</Text>
+          <TouchableOpacity 
+            style={styles.registerNowButton}
+            onPress={() => {
+              // Navigate to DangKyHocPhan screen
+              // Requires navigation prop, which we would need to add
+            }}
+          >
+            <Text style={styles.registerNowText}>Register Now</Text>
+          </TouchableOpacity>
         </View>
       )}
-    </SafeAreaView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
-  },
-  content: {
-    flex: 1,
+    backgroundColor: '#f5f5f5',
     padding: 16,
   },
-  header: {
-    backgroundColor: '#0066CC',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  backButton: {
-    padding: 8,
-  },
-  headerTitle: {
-    color: '#fff',
-    fontSize: 18,
+  title: {
+    fontSize: 22,
     fontWeight: 'bold',
+    color: '#003366',
+    marginBottom: 16,
     textAlign: 'center',
-    flex: 1,
   },
-  notificationButton: {
-    padding: 8,
+  listContent: {
+    paddingBottom: 16,
   },
-  semesterSelector: {
+  courseItem: {
+    backgroundColor: '#fff',
+    padding: 16,
+    marginBottom: 12,
+    borderRadius: 8,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-    margin: 16,
-    borderRadius: 8,
-    backgroundColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
   },
-  semesterText: {
-    fontSize: 16,
+  courseInfo: {
+    flex: 1,
+  },
+  courseCode: {
+    fontSize: 14,
     fontWeight: '500',
+    color: '#666',
   },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  dropdown: {
-    position: 'absolute',
-    top: 50, // Điều chỉnh vị trí dropdown
-    left: 0,
-    right: 0,
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-    borderRadius: 8,
-    zIndex: 1000,
-    elevation: 5,
-  },
-  dropdownItem: {
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
-  },
-  dropdownText: {
+  courseTitle: {
     fontSize: 16,
-    color: '#000',
-  },
-  tableContainer: {
-    marginHorizontal: 16,
-    marginTop: 16,
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-    borderRadius: 8,
-    overflow: 'hidden',
-    flex: 1,
-  },
-  tableHeader: {
-    flexDirection: 'row',
-    backgroundColor: '#0066CC',
-  },
-  headerCell: {
-    paddingVertical: 12,
-    paddingHorizontal: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderRightWidth: 1,
-    borderRightColor: 'rgba(255,255,255,0.3)',
-  },
-  headerCellText: {
     fontWeight: 'bold',
-    color: '#fff',
-    fontSize: 14,
-    textAlign: 'center',
-  },
-  tableRow: {
-    flexDirection: 'row',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
-  },
-  tableCell: {
-    paddingVertical: 12,
-    paddingHorizontal: 8,
-    fontSize: 14,
+    marginBottom: 4,
     color: '#333',
-    borderRightWidth: 1,
-    borderRightColor: '#E0E0E0',
-    justifyContent: 'center',
-    textAlign: 'center',
   },
-  centerText: {
-    textAlign: 'center',
+  courseDetails: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 4,
   },
-  leftText: {
-    textAlign: 'left',
+  registrationDate: {
+    fontSize: 13,
+    color: '#888',
   },
-  rightText: {
-    textAlign: 'right',
-  },
-  printButton: {
-    backgroundColor: '#0066CC',
-    width: 60,
-    height: 40,
-    borderRadius: 10,
+  dropButton: {
+    backgroundColor: '#d9534f',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 5,
     justifyContent: 'center',
     alignItems: 'center',
-    alignSelf: 'flex-end', // Đặt nút sang bên phải
-    marginTop: 16,
-    marginRight: 16, // Thêm khoảng cách với cạnh phải
+    minWidth: 70,
   },
-  printButtonText: {
+  dropButtonText: {
     color: '#fff',
-    fontSize: 16,
     fontWeight: 'bold',
-    marginLeft: 8,
+    fontSize: 14,
   },
-  actionButton: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  emptyStateContainer: {
+  loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
   },
-  emptyStateText: {
-    marginTop: 12,
+  loadingText: {
+    marginTop: 10,
+    color: '#666',
     fontSize: 16,
-    color: '#666666',
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  emptyText: {
+    marginTop: 10,
+    marginBottom: 20,
+    fontSize: 16,
+    color: '#666',
     textAlign: 'center',
+  },
+  registerNowButton: {
+    backgroundColor: '#003366',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 5,
+  },
+  registerNowText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 16,
   },
 });
 

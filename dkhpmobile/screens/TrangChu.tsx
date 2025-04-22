@@ -5,15 +5,14 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import CalendarStrip from 'react-native-calendar-strip';
 import { useNavigation } from '@react-navigation/native';
 import { NavigationProp } from '@react-navigation/native';
+import { useAuth } from '../src/api/context/AuthContext'; // Import useAuth hook
 
 // Định nghĩa kiểu dữ liệu cho navigation
 type RootStackParamList = {
   TrangChu: undefined;
-  ChuongTrinhKhung: undefined;
-  DangKyHocPhan: undefined; // Thêm màn hình DangKyHocPhan
-  DanhSachMonHocdangky: undefined; // Add this line
-  Calendar: undefined; // Add this line for the Calendar screen
-  ThongBao: undefined; // Add this line for ThongBao screen
+  'Đăng Ký': { screen?: string, params?: any };
+  'Cá Nhân': { screen?: string, params?: any };
+  DanhSachMonHocdangky: undefined;
 };
 
 type NavigationProps = NavigationProp<RootStackParamList>;
@@ -86,6 +85,9 @@ const getWeekStartDate = (date: Date) => {
 const TrangChu = () => {
   // Lấy navigation object
   const navigation = useNavigation<NavigationProps>();
+  
+  // Get user data from auth context
+  const { user, isAuthenticated } = useAuth();
 
   const [selectedDate, setSelectedDate] = React.useState(new Date());
   const [startingDate, setStartingDate] = React.useState(() => getWeekStartDate(new Date())); // Khởi tạo startingDate là Chủ nhật của tuần hiện tại
@@ -99,11 +101,12 @@ const TrangChu = () => {
     return `${dayName}, ngày ${date.getDate()} tháng ${date.getMonth() + 1} năm ${date.getFullYear()}`;
   };
 
-  // Mock data cho user
+  // User info from authentication context
+  // If the user isn't authenticated, use empty strings
   const userData = {
-    name: "Lâ Minh Khánh",
-    studentId: "4004267",
-    class: "67CS1"
+    name: user?.full_name || "Chưa đăng nhập",
+    studentId: user?.student_id || "---",
+    class: user?.class || "---" // Use class from user data if available
   };
 
   // Mock data cho thời khóa biểu theo ngày
@@ -200,12 +203,16 @@ const TrangChu = () => {
 
   // Hàm xử lý chuyển đến màn hình chương trình khung
   const navigateToChuongTrinhKhung = () => {
-    navigation.navigate('ChuongTrinhKhung');
+    navigation.navigate('Đăng Ký', { 
+      screen: 'ChuongTrinhKhung' 
+    });
   };
 
   // Hàm xử lý chuyển đến màn hình đăng ký học phần
   const navigateToDangKyHocPhan = () => {
-    navigation.navigate('DangKyHocPhan');
+    navigation.navigate('Đăng Ký', { 
+      screen: 'DangKyHocPhan' 
+    });
   };
 
   // Hàm xử lý chuyển đến màn hình danh sách môn học đã đăng ký
@@ -215,12 +222,16 @@ const TrangChu = () => {
 
   // Hàm xử lý chuyển đến màn hình thời khóa biểu
   const navigateToCalendar = () => {
-    navigation.navigate('Calendar');
+    navigation.navigate('Cá Nhân', { 
+      screen: 'Calendar' 
+    });
   };
 
   // Hàm xử lý chuyển đến màn hình thông báo
   const navigateToThongBao = () => {
-    navigation.navigate('ThongBao');
+    navigation.navigate('Cá Nhân', { 
+      screen: 'ThongBao' 
+    });
   };
 
   return (
