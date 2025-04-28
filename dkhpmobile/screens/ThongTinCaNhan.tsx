@@ -1,10 +1,10 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
-
+import { getStudentProfile } from '../src/api/services/studentService';
 // Define the navigation param list type
 export type RootStackParamList = {
   TrangChuScreen: undefined;
@@ -19,26 +19,56 @@ type ThongTinCaNhanNavigationProp = StackNavigationProp<RootStackParamList, 'Tho
 
 const ThongTinCaNhan = () => {
   const navigation = useNavigation<ThongTinCaNhanNavigationProp>();
-  
-  // Updated navigation function - simplified to navigate within the same stack
+  const [userInfo, setUserInfo] = useState<any>(null);
+
   const navigateToThongBao = () => {
     navigation.navigate('ThongBao');
   };
-  
-  // Mock data
-  const userInfo = {
-    name: "Lâ Minh Khánh",
-    birthDate: "06/04/2004",
-    studentId: "4004267",
-    educationType: "Chính quy - CDIO",
-    phone: "085 742 9352",
-    email: "4004267@st.huce.edu.vn",
-    level: "Đại học-B7",
-    faculty: "Công nghệ thông tin",
-    major: "Khoa học máy tính",
-    specialization: "Khoa học máy tính",
-    class: "67CS1"
-  };
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const data = await getStudentProfile();
+        setUserInfo({
+          name: data.full_name,
+          birthDate: data.date_of_birth,
+          studentId: data.student_id,
+          educationType: data.program_name,
+          phone: data.phone || '',
+          email: data.email,
+          level: data.level || '',
+          faculty: data.faculty || '',
+          major: data.major || '',
+          specialization: data.specialization || '',
+          class: data.class,
+        });
+      } catch (error) {
+        // Set an error state to display an error message in the UI
+        setUserInfo({ error: 'Không thể tải thông tin sinh viên. Vui lòng thử lại sau.' });
+      }
+    };
+    fetchProfile();
+  }, []);
+
+  if (!userInfo) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <Text>Đang tải thông tin sinh viên...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (userInfo.error) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <Text style={{ color: 'red', textAlign: 'center' }}>{userInfo.error}</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -81,7 +111,9 @@ const ThongTinCaNhan = () => {
               </View>
               <View style={styles.infoRow}>
                 <Text style={styles.label}>Ngày sinh: </Text>
-                <Text style={styles.boldValue}>{userInfo.birthDate}</Text>
+                <Text style={styles.boldValue}>
+                  {userInfo.birthDate ? new Date(userInfo.birthDate).toLocaleDateString('vi-VN') : ''}
+                </Text>
               </View>
             </View>
           </View>
