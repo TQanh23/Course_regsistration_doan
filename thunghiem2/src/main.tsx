@@ -7,6 +7,9 @@ import TrangChu from './pages/TrangChu/TrangChu';
 import ThongTinCaNhan from './pages/User/ThongTinCaNhan';
 import DoiMatKhau from './pages/User/DoiMatKhau';
 import QuanLyTaiKhoan from './pages/QuanLyTaiKhoan/QuanLyTaiKhoan';
+import QuanLyMonHoc from './pages/QuanLyMonHoc/QuanLyMonHoc';
+import QuanLyGiangVien from './pages/QuanLyGiangVien/QuanLyGiangVien'
+import QuanLyLopHocPhan from './pages/QuanLyLopHocPhan/QuanLyLopHocPhan'
 
 // Page transition animation configuration
 const pageTransitions = {
@@ -71,6 +74,30 @@ const App = () => {
               <QuanLyTaiKhoan />
             </PageTransitionWrapper>
           } 
+        />
+        <Route 
+          path="/quan-ly-mon-hoc" 
+          element={
+            <PageTransitionWrapper>
+              <QuanLyMonHoc />
+            </PageTransitionWrapper>
+          } 
+        />
+        <Route 
+          path="/quan-ly-giang-vien" 
+          element={
+            <PageTransitionWrapper>
+              <QuanLyGiangVien />
+            </PageTransitionWrapper>
+          }
+        />
+        <Route 
+          path="/quan-ly-lop-hoc-phan" 
+          element={
+            <PageTransitionWrapper>
+              <QuanLyLopHocPhan />
+            </PageTransitionWrapper>
+          }
         />
       </Route>
     </Routes>
