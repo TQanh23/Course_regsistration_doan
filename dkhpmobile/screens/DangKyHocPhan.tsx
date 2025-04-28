@@ -29,6 +29,7 @@ type RootStackParamList = {
   TrangChuScreen: undefined;
   DangKyHocPhan: undefined;
   ThongBao: undefined;
+  DanhSachMonHocdangky: undefined; // Add this screen to the navigation type
   // Add other screens as needed
 };
 
@@ -410,6 +411,15 @@ const DangKyHocPhan = () => {
           </View>
         </View>
       )}
+
+      {/* Button to View Registered Courses */}
+      <TouchableOpacity 
+        style={styles.viewRegisteredCoursesButton}
+        onPress={() => navigation.navigate('DanhSachMonHocdangky')}
+      >
+        <Icon name="list" size={18} color="#0052CC" style={styles.viewRegisteredCoursesIcon} />
+        <Text style={styles.viewRegisteredCoursesText}>Xem các môn đã đăng ký</Text>
+      </TouchableOpacity>
 
       {/* Loading Indicator */}
       {loading && !refreshing && (
@@ -834,6 +844,26 @@ const styles = StyleSheet.create({
     borderBottomColor: '#e0e0e0',
   },
   prerequisiteText: {
+    color: '#0052CC',
+  },
+  viewRegisteredCoursesButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#E1F5FE',
+    padding: 12,
+    marginHorizontal: 16,
+    marginBottom: 16,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#B3E5FC',
+  },
+  viewRegisteredCoursesIcon: {
+    marginRight: 8,
+  },
+  viewRegisteredCoursesText: {
+    fontSize: 16,
+    fontWeight: '600',
     color: '#0052CC',
   },
 });

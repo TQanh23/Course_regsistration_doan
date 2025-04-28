@@ -23,8 +23,8 @@ router.get('/course-schedule/:registrationId', studentController.getCourseSchedu
 // Register for a course
 router.post('/register/:courseId', studentController.registerForCourse);
 
-// Drop a course
-router.delete('/drop/:courseId', studentController.dropCourse);
+// Drop a course registration by registration ID
+router.put('/drop/:id', authenticateToken, isStudent, studentController.dropRegistration);
 
 // Get student profile
 router.get('/profile', studentController.getStudentProfile);

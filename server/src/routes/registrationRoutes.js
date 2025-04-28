@@ -14,6 +14,10 @@ router.get('/', isAdmin, registrationController.getAllRegistrations);
 router.get('/my-registrations', registrationController.getMyRegistrations);
 // New route for student course signup (one time only)
 router.post('/course-signup', registrationController.studentCourseSignup);
+// New route for batch course registration
+router.post('/batch', registrationController.batchRegisterCourses);
+// New route for batch course drop
+router.post('/batch-drop', registrationController.batchDropCourses);
 
 // Routes with ID parameter - need special handling for user-specific routes
 router.get('/user/:userId', isAdminOrStudent, registrationController.getRegistrationsByUser);
@@ -24,5 +28,13 @@ router.get('/:id', isAdminOrStudent, registrationController.getRegistrationById)
 router.post('/', isAdminOrStudent, registrationController.createRegistration);
 router.put('/:id', isAdmin, registrationController.updateRegistration);
 router.delete('/:id', isAdminOrStudent, registrationController.deleteRegistration);
+
+// allow student (own) or admin to drop
+router.put(
+    '/:id/drop',
+    authenticateToken,
+    isAdminOrStudent,
+    registrationController.deleteRegistration
+  );
 
 module.exports = router;

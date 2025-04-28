@@ -217,7 +217,10 @@ const TrangChu = () => {
 
   // Hàm xử lý chuyển đến màn hình danh sách môn học đã đăng ký
   const navigateToDanhSachMonHocdangky = () => {
-    navigation.navigate('DanhSachMonHocdangky');
+    // Navigate to the DanhSachMonHocdangky screen inside the DangKy stack
+    navigation.navigate('Đăng Ký', { 
+      screen: 'DanhSachMonHocdangky' 
+    });
   };
 
   // Hàm xử lý chuyển đến màn hình thời khóa biểu

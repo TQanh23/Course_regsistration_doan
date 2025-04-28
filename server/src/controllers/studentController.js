@@ -159,22 +159,26 @@ const studentController = {
     getStudentCourses: async (req, res) => {
         try {
             const studentId = req.user.id;
+            const { status, termId } = req.query; // Add query parameters for filtering
             
-            // Get all enrolled courses with detailed information
-            const [registrations] = await pool.query(`
+            // Start building the query with base joins
+            let query = `
                 SELECT 
                     r.id as registration_id,
                     r.registration_date,
                     r.registration_status,
+                    r.grade,
                     co.id as course_offering_id,
                     c.id as course_id,
                     c.course_code,
-                    c.title,
+                    c.title as course_title,           -- <--- Alias for clarity
                     c.credits,
                     c.course_description,
                     cc.name as category_name,
+                    at.id as term_id,
                     at.term_name,
                     at.academic_year,
+                    co.section_number,
                     GROUP_CONCAT(
                         JSON_OBJECT(
                             'day', ts.day_of_week,
@@ -193,10 +197,32 @@ const studentController = {
                 LEFT JOIN timetable_slots ts ON cs.timetable_slot_id = ts.id
                 LEFT JOIN classrooms cl ON cs.classroom_id = cl.id
                 LEFT JOIN professors p ON cs.professor_id = p.id
-                WHERE r.student_id = ? AND r.registration_status = 'enrolled'
+                WHERE r.student_id = ?
                 GROUP BY r.id
                 ORDER BY c.course_code
-            `, [studentId]);
+            `;
+            
+            const queryParams = [studentId];
+            
+            // Add filters for registration status if provided
+            if (status) {
+                query += " AND r.registration_status = ?";
+                queryParams.push(status);
+            } else {
+                // By default, show only active registrations (enrolled, waitlisted)
+                query += " AND r.registration_status IN ('enrolled', 'waitlisted')";
+            }
+            
+            // Add term filter if provided
+            if (termId) {
+                query += " AND at.id = ?";
+                queryParams.push(termId);
+            }
+            
+            // Group by registration to consolidate schedule info
+            query += " GROUP BY r.id ORDER BY c.course_code";
+            
+            const [registrations] = await pool.query(query, queryParams);
             
             // Process the schedule_details string to convert it to a proper array of objects
             const processedRegistrations = registrations.map(reg => {
@@ -303,51 +329,50 @@ const studentController = {
         }
     },
 
-    // Drop a course
-    dropCourse: async (req, res) => {
-        try {
-            const studentId = req.user.id;
-            const courseId = req.params.courseId;
-            
-            // Find registration
-            const [registration] = await pool.query(`
-                SELECT r.* FROM registrations r
-                JOIN course_offerings co ON r.course_offering_id = co.id
-                WHERE r.student_id = ? AND co.course_id = ? AND r.registration_status = 'enrolled'
-            `, [studentId, courseId]);
-            
-            if (registration.length === 0) {
-                return res.status(404).json({
-                    success: false,
-                    message: 'You are not registered for this course'
-                });
-            }
-            
-            // Update registration status
-            await pool.query(
-                'UPDATE registrations SET registration_status = "dropped" WHERE id = ?',
-                [registration[0].id]
-            );
-            
-            // Update enrollment count
-            await pool.query(
-                'UPDATE course_offerings SET current_enrollment = current_enrollment - 1 WHERE id = ?',
-                [registration[0].course_offering_id]
-            );
-            
-            res.status(200).json({
-                success: true,
-                message: 'Successfully dropped the course'
-            });
-        } catch (error) {
-            console.error('Error dropping course:', error.message);
-            res.status(500).json({ 
-                success: false,
-                message: 'Server error while dropping course',
-                error: process.env.NODE_ENV === 'development' ? error.message : undefined
-            });
+        // …existing code…
+    dropRegistration: async (req, res) => {
+      try {
+        const registrationId = req.params.id;
+        const studentId = req.user.id;
+    
+        // 1) fetch the registration + offering
+        const [rows] = await pool.query(`
+          SELECT 
+            r.registration_status, 
+            co.id AS offeringId 
+          FROM registrations r
+          JOIN course_offerings co ON r.course_offering_id = co.id
+          WHERE r.id = ? AND r.student_id = ?
+        `, [registrationId, studentId]);
+    
+        if (rows.length === 0) {
+          return res.status(404).json({ success: false, message: 'Registration not found.' });
         }
+    
+        const { registration_status, offeringId } = rows[0];
+        if (registration_status !== 'enrolled') {
+          return res.status(400).json({ success: false, message: 'Only enrolled courses can be dropped.' });
+        }
+    
+        // 2) update status → dropped
+        await pool.query(
+          'UPDATE registrations SET registration_status = "dropped" WHERE id = ?',
+          [registrationId]
+        );
+    
+        // 3) decrement enrollment
+        await pool.query(
+          'UPDATE course_offerings SET current_enrollment = current_enrollment - 1 WHERE id = ?',
+          [offeringId]
+        );
+    
+        res.json({ success: true, message: 'Course dropped successfully.' });
+      } catch (err) {
+        console.error('dropRegistration error:', err);
+        res.status(500).json({ success: false, message: 'Server error.' });
+      }
     },
+    // …existing code…
 
     // Get student profile
     getStudentProfile: async (req, res) => {
@@ -464,8 +489,19 @@ const studentController = {
             const studentId = req.user.id;
             
             const [registrations] = await pool.query(`
-                SELECT r.*, c.course_code, c.title, c.credits,
-                cc.name as category_name, at.term_name
+                SELECT 
+                    r.id AS registration_id,
+                    r.registration_date,
+                    r.registration_status,
+                    r.grade,
+                    r.course_offering_id,
+                    c.id AS course_id,
+                    c.course_code,
+                    c.title AS course_title,         -- <--- Alias for clarity
+                    c.credits,
+                    c.course_description,
+                    cc.name AS category_name,
+                    at.term_name
                 FROM registrations r
                 JOIN course_offerings co ON r.course_offering_id = co.id
                 JOIN courses c ON co.course_id = c.id

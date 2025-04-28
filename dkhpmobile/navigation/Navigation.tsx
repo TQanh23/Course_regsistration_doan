@@ -84,6 +84,11 @@ const DangKyStackNavigator = () => {
         component={ChuongTrinhKhung} 
         options={{ title: 'Chương Trình Khung' }}
       />
+      <DangKyStack.Screen 
+        name="DanhSachMonHocdangky" 
+        component={DanhSachMonHocdangky} 
+        options={{ title: 'Môn Học Đã Đăng Ký' }}
+      />
     </DangKyStack.Navigator>
   );
 };
