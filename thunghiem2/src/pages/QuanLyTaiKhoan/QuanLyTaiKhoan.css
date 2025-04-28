@@ -712,10 +712,6 @@
   border-left: none;
   border-radius: 0 4px 4px 0;
   background-color: #f8f9fa;
-  font-size: 12px; /* Giảm từ 14px xuống 12px */
-  height: 32px;
-  line-height: 32px; /* Căn giữa theo chiều dọc */
-  box-sizing: border-box;
 }
 
 .input-with-label {
