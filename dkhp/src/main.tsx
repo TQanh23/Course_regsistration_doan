@@ -2,12 +2,12 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import Login from './pages/Login'
-import Register from './pages/Register'
-import QuenMatKhau from './pages/QuenMatKhau' // Add this import
-import XacNhanEmailQuenPass from './pages/XacNhanEmailQuenPass' // Add this import
-import XacNhanEmailDangKy from './pages/XacNhanEmailDangKy' // Add this import
-import TaoMatKhau from './pages/TaoMatKhauMoi' // Add this import
+import Login from './pages/DangKyDangNhap/Login'
+import Register from './pages/DangKyDangNhap/Register'
+import QuenMatKhau from './pages/DangKyDangNhap/QuenMatKhau' // Add this import
+import XacNhanEmailQuenPass from './pages/DangKyDangNhap/XacNhanEmailQuenPass' // Add this import
+import XacNhanEmailDangKy from './pages/DangKyDangNhap/XacNhanEmailDangKy' // Add this import
+import TaoMatKhau from './pages/DangKyDangNhap/TaoMatKhauMoi' // Add this import
 import './index.css'
 
 // Page transition wrapper component
