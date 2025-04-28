@@ -14,6 +14,12 @@ router.get('/courses', studentController.getAvailableCourses);
 // Get student's registered courses
 router.get('/my-courses', studentController.getStudentCourses);
 
+// Get student's daily schedule
+router.get('/schedule', studentController.getDailySchedule);
+
+// Get schedule for a specific registration
+router.get('/course-schedule/:registrationId', studentController.getCourseSchedule);
+
 // Register for a course
 router.post('/register/:courseId', studentController.registerForCourse);
 

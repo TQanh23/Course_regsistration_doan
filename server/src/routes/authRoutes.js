@@ -11,5 +11,6 @@ router.post('/register', authController.register);
 // Protected routes (require authentication)
 router.get('/profile', authenticateToken, authController.getProfile);
 router.post('/change-password', authenticateToken, authController.changePassword);
+router.post('/refresh-token', authenticateToken, authController.refreshToken);
 
 module.exports = router;

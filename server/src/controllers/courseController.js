@@ -13,7 +13,7 @@ const getAllCourses = async (req, res) => {
       FROM courses c
       LEFT JOIN course_categories cc ON c.category_id = cc.id
       WHERE c.active = TRUE
-      ORDER BY c.code
+      ORDER BY c.course_code
     `);
     
     res.status(200).json({
@@ -493,6 +493,413 @@ const getCourseEnrollment = async (req, res) => {
   }
 };
 
+/**
+ * Get all available courses for registration
+ * @route GET /api/courses/available
+ * @access Public
+ */
+const getAvailableCourses = async (req, res) => {
+  try {
+    // Get the active term ID from query parameter, or use the current active term
+    const { termId } = req.query;
+    
+    let query = `
+      SELECT co.id as offering_id, c.id as course_id, c.course_code as code, c.title, 
+             c.course_description as description, c.credits, cc.name as category_name,
+             co.section_number, co.max_enrollment, co.current_enrollment,
+             at.term_name as term_name, at.id as term_id,
+             (co.max_enrollment - co.current_enrollment) as available_seats,
+             GROUP_CONCAT(DISTINCT cl.building) as building, 
+             GROUP_CONCAT(DISTINCT cl.room_number) as room_number,
+             GROUP_CONCAT(DISTINCT p.full_name) as professor_name,
+             GROUP_CONCAT(DISTINCT ts.day_of_week) as day_of_week, 
+             MIN(ts.start_time) as start_time, 
+             MAX(ts.end_time) as end_time
+      FROM course_offerings co
+      JOIN courses c ON co.course_id = c.id
+      JOIN academic_terms at ON co.term_id = at.id
+      LEFT JOIN course_categories cc ON c.category_id = cc.id
+      LEFT JOIN course_schedules cs ON cs.course_offering_id = co.id
+      LEFT JOIN classrooms cl ON cs.classroom_id = cl.id
+      LEFT JOIN professors p ON cs.professor_id = p.id
+      LEFT JOIN timetable_slots ts ON cs.timetable_slot_id = ts.id
+      WHERE c.active = TRUE
+    `;
+    
+    const queryParams = [];
+    
+    // Filter by term if provided
+    if (termId) {
+      query += ` AND at.id = ?`;
+      queryParams.push(termId);
+    } else {
+      // Get current active term (where current date is between term dates)
+      query += ` AND CURRENT_DATE() BETWEEN at.registration_start AND at.registration_end`;
+    }
+    
+    // Make sure there are available seats
+    query += ` AND (co.max_enrollment - co.current_enrollment) > 0`;
+    
+    // Group by offering to avoid duplicates from multiple schedule entries
+    query += ` GROUP BY co.id`;
+    
+    // Order by course code
+    query += ` ORDER BY c.course_code, co.section_number`;
+    
+    const [rows] = await pool.query(query, queryParams);
+    
+    res.status(200).json({
+      success: true,
+      count: rows.length,
+      data: rows
+    });
+  } catch (error) {
+    console.error('Error fetching available courses:', error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Server error while fetching available courses',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Get all available courses for registration in a specified semester
+ * @route GET /api/courses/available-by-semester
+ * @access Public
+ */
+const getAvailableCoursesBySemester = async (req, res) => {
+  try {
+    // Get the semester ID from query parameter
+    const { semesterId } = req.query;
+    
+    if (!semesterId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Semester ID is required'
+      });
+    }
+
+    // Get term information first
+    const [termInfo] = await pool.query(
+      'SELECT * FROM academic_terms WHERE id = ?',
+      [semesterId]
+    );
+    
+    if (termInfo.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Term not found'
+      });
+    }
+
+    // Query to get all available courses for the specified semester with enhanced details
+    const [courseOfferings] = await pool.query(`
+      SELECT 
+        co.id as offering_id, 
+        c.id as course_id, 
+        c.course_code, 
+        c.title, 
+        c.course_description, 
+        c.credits, 
+        cc.name as category_name,
+        c.max_capacity,
+        co.section_number, 
+        co.max_enrollment, 
+        co.current_enrollment,
+        at.term_name, 
+        at.id as term_id,
+        at.start_date,
+        at.end_date,
+        at.registration_start,
+        at.registration_end,
+        (co.max_enrollment - co.current_enrollment) as available_seats,
+        GROUP_CONCAT(DISTINCT cl.building SEPARATOR ', ') as building, 
+        GROUP_CONCAT(DISTINCT cl.room_number SEPARATOR ', ') as room_number,
+        GROUP_CONCAT(DISTINCT p.full_name SEPARATOR ', ') as professor_name,
+        GROUP_CONCAT(
+          DISTINCT CONCAT(
+            ts.day_of_week, ' (', 
+            TIME_FORMAT(ts.start_time, '%H:%i'), ' - ', 
+            TIME_FORMAT(ts.end_time, '%H:%i'), ')'
+          ) 
+          SEPARATOR '; '
+        ) as schedule_details
+      FROM course_offerings co
+      JOIN courses c ON co.course_id = c.id
+      JOIN academic_terms at ON co.term_id = at.id
+      LEFT JOIN course_categories cc ON c.category_id = cc.id
+      LEFT JOIN course_schedules cs ON cs.course_offering_id = co.id
+      LEFT JOIN classrooms cl ON cs.classroom_id = cl.id
+      LEFT JOIN professors p ON cs.professor_id = p.id
+      LEFT JOIN timetable_slots ts ON cs.timetable_slot_id = ts.id
+      WHERE c.active = TRUE AND at.id = ?
+      AND (co.max_enrollment - co.current_enrollment) > 0
+      GROUP BY co.id
+      ORDER BY c.course_code, co.section_number
+    `, [semesterId]);
+
+    // Process course offerings with proper error handling
+    const processedOfferings = [];
+    
+    for (const offering of courseOfferings) {
+      const enhancedOffering = { ...offering };
+      
+      try {
+        // Get prerequisite courses if any
+        const [prerequisites] = await pool.query(`
+          SELECT 
+            cp.id as prerequisite_id,
+            c.course_code, 
+            c.title,
+            c.credits
+          FROM course_prerequisites cp
+          JOIN courses c ON cp.prerequisite_course_id = c.id
+          WHERE cp.course_id = ?
+        `, [offering.course_id]);
+        
+        if (prerequisites.length > 0) {
+          enhancedOffering.prerequisites = prerequisites;
+        }
+      } catch (error) {
+        console.error(`Error fetching prerequisites for course ${offering.course_id}:`, error.message);
+      }
+      
+      // Check for current registration status if user is logged in
+      if (req.user && req.user.id) {
+        try {
+          const [registration] = await pool.query(`
+            SELECT r.id, r.registration_status, r.registration_date
+            FROM registrations r
+            JOIN course_offerings co ON r.course_offering_id = co.id
+            WHERE r.student_id = ? AND co.id = ?
+          `, [req.user.id, offering.offering_id]);
+          
+          if (registration.length > 0) {
+            enhancedOffering.registration_status = registration[0].registration_status;
+            enhancedOffering.registration_id = registration[0].id;
+            enhancedOffering.registration_date = registration[0].registration_date;
+          }
+        } catch (error) {
+          console.error(`Error fetching registration status for student ${req.user.id}:`, error.message);
+        }
+      }
+      
+      processedOfferings.push(enhancedOffering);
+    }
+    
+    // Create a more structured response with term details
+    const currentDate = new Date();
+    const formattedTerm = {
+      id: termInfo[0].id,
+      term_name: termInfo[0].term_name,
+      period: `${new Date(termInfo[0].start_date).toLocaleDateString()} - ${new Date(termInfo[0].end_date).toLocaleDateString()}`,
+      registration_period: `${new Date(termInfo[0].registration_start).toLocaleDateString()} - ${new Date(termInfo[0].registration_end).toLocaleDateString()}`,
+      start_date: termInfo[0].start_date,
+      end_date: termInfo[0].end_date,
+      registration_start: termInfo[0].registration_start,
+      registration_end: termInfo[0].registration_end,
+      is_registration_active: 
+        currentDate >= new Date(termInfo[0].registration_start) && 
+        currentDate <= new Date(termInfo[0].registration_end),
+      is_term_current:
+        currentDate >= new Date(termInfo[0].start_date) && 
+        currentDate <= new Date(termInfo[0].end_date)
+    };
+    
+    // Get total students registered for this term
+    const [registrationCount] = await pool.query(`
+      SELECT COUNT(DISTINCT r.student_id) as total_students
+      FROM registrations r
+      JOIN course_offerings co ON r.course_offering_id = co.id
+      WHERE co.term_id = ?
+    `, [semesterId]);
+    
+    const result = {
+      term: formattedTerm,
+      courses: processedOfferings,
+      total_courses: processedOfferings.length,
+      total_registered_students: registrationCount[0].total_students || 0
+    };
+    
+    res.status(200).json({
+      success: true,
+      count: processedOfferings.length,
+      data: result
+    });
+  } catch (error) {
+    console.error('Error fetching available courses by semester:', error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Server error while fetching available courses',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
+/**
+ * Get active academic terms
+ * @route GET /api/courses/terms
+ * @access Public
+ */
+const getActiveTerms = async (req, res) => {
+  try {
+    const [rows] = await pool.query(`
+      SELECT * FROM academic_terms
+      WHERE CURRENT_DATE() <= registration_end
+      ORDER BY start_date DESC
+    `);
+    
+    res.status(200).json({
+      success: true,
+      count: rows.length,
+      data: rows
+    });
+  } catch (error) {
+    console.error('Error fetching academic terms:', error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Server error while fetching academic terms',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Get curriculum framework (chương trình khung) by major
+ * @route GET /api/courses/curriculum
+ * @access Public
+ */
+const getCurriculumFramework = async (req, res) => {
+  try {
+    // Get program ID from query parameters (now we're using program_id instead of major_id)
+    const programId = parseInt(req.query.major_id || req.query.program_id || 1); // Default to 1 if not provided
+    
+    if (isNaN(programId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid program ID',
+      });
+    }
+    
+    // Get program information
+    const [programRows] = await pool.query(
+      'SELECT id, name, description FROM academic_programs WHERE id = ?',
+      [programId]
+    );
+    
+    if (programRows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Program not found',
+      });
+    }
+    
+    const program = programRows[0];
+    
+    // Create a fake major structure based on program since we don't have a separate majors table
+    const major = {
+      id: program.id,
+      name: program.name,
+      code: program.name.substring(0, 3).toUpperCase(),
+      description: program.description
+    };
+    
+    // Get all courses for the program (since we don't have semesters table, we'll create fake semesters)
+    const [coursesRows] = await pool.query(`
+      SELECT c.id, c.course_code as code, c.title, c.course_description as description, 
+             c.credits, cc.name as category_name, 1 as is_required
+      FROM courses c
+      LEFT JOIN course_categories cc ON c.category_id = cc.id
+      WHERE c.active = TRUE
+      ORDER BY c.course_code
+    `);
+    
+    // Group courses into semesters (for demonstration, we'll create 8 semesters)
+    const numberOfSemesters = 8;
+    const coursesPerSemester = Math.ceil(coursesRows.length / numberOfSemesters);
+    
+    // Create semester structures
+    const semesters = [];
+    let totalCredits = 0;
+    
+    for (let i = 0; i < numberOfSemesters; i++) {
+      const semesterCourses = coursesRows.slice(
+        i * coursesPerSemester, 
+        Math.min((i + 1) * coursesPerSemester, coursesRows.length)
+      );
+      
+      if (semesterCourses.length === 0) continue;
+      
+      const semesterCredits = semesterCourses.reduce((sum, course) => sum + course.credits, 0);
+      totalCredits += semesterCredits;
+      
+      semesters.push({
+        id: i + 1,
+        name: `Học kỳ ${i + 1}`,
+        sequence: i + 1,
+        credits: semesterCredits,
+        courses: semesterCourses
+      });
+    }
+    
+    res.status(200).json({
+      success: true,
+      data: {
+        major,
+        program,
+        totalCredits,
+        semesters,
+      },
+    });
+  } catch (error) {
+    console.error('Error fetching curriculum framework:', error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Server error while fetching curriculum framework',
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * Get list of all majors
+ * @route GET /api/courses/majors
+ * @access Public
+ */
+const getMajors = async (req, res) => {
+  try {
+    // Using academic_programs table since that appears to be the relevant one in your schema
+    const [rows] = await pool.query(
+      'SELECT id, name, description FROM academic_programs ORDER BY name'
+    );
+    
+    // Transform the results to match the expected format
+    const transformedData = rows.map(program => ({
+      id: program.id,
+      name: program.name,
+      code: program.name.substring(0, 3).toUpperCase(), // Generate a code if not available
+      description: program.description,
+      program_id: program.id,
+      program_name: program.name,
+      program_code: program.name.substring(0, 3).toUpperCase() // Generate a code if not available
+    }));
+    
+    res.status(200).json({
+      success: true,
+      count: transformedData.length,
+      data: transformedData,
+    });
+  } catch (error) {
+    console.error('Error fetching majors:', error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Server error while fetching majors',
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   getAllCourses,
   getCourseById,
@@ -501,5 +908,10 @@ module.exports = {
   deleteCourse,
   searchCourses,
   getCategories,
-  getCourseEnrollment
+  getCourseEnrollment,
+  getAvailableCourses,
+  getActiveTerms,
+  getAvailableCoursesBySemester,
+  getCurriculumFramework,
+  getMajors
 };

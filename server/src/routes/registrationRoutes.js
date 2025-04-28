@@ -10,6 +10,11 @@ router.use(authenticateToken);
 // Admin-only routes
 router.get('/', isAdmin, registrationController.getAllRegistrations);
 
+// Student-specific routes
+router.get('/my-registrations', registrationController.getMyRegistrations);
+// New route for student course signup (one time only)
+router.post('/course-signup', registrationController.studentCourseSignup);
+
 // Routes with ID parameter - need special handling for user-specific routes
 router.get('/user/:userId', isAdminOrStudent, registrationController.getRegistrationsByUser);
 router.get('/course/:courseId', isAdmin, registrationController.getRegistrationsByCourse);

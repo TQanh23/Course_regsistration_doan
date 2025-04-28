@@ -3,7 +3,7 @@
  */
 module.exports = {
   // JWT token expiration time
-  expiresIn: '24h',
+  expiresIn: '1h',
   
   // Cookie name for web authentication (if needed)
   cookieName: 'dkhp_token',

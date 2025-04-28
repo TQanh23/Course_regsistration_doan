@@ -1,4 +1,5 @@
 import apiClient from '../config/api-config';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 /**
  * Service for handling course registration operations
@@ -23,7 +24,20 @@ export const registrationService = {
    */
   registerCourse: async (courseId: number, termId: number) => {
     try {
-      return await apiClient.post('/registrations', { course_id: courseId, term_id: termId });
+      // Get user data from AsyncStorage to extract the student ID
+      const userData = await AsyncStorage.getItem('user_data');
+      if (!userData) {
+        throw new Error('User data not found. Please login again.');
+      }
+      
+      const user = JSON.parse(userData);
+      const studentId = user.id;
+      
+      return await apiClient.post('/registrations', { 
+        student_id: studentId, 
+        course_id: courseId, 
+        term_id: termId 
+      });
     } catch (error) {
       console.error('Register course error:', error);
       throw error;
