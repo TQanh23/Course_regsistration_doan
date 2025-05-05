@@ -18,6 +18,8 @@ router.post('/course-signup', registrationController.studentCourseSignup);
 router.post('/batch', registrationController.batchRegisterCourses);
 // New route for batch course drop
 router.post('/batch-drop', registrationController.batchDropCourses);
+// New route for timetable 
+router.get('/my-timetable', authenticateToken, registrationController.getMyTimetable);
 
 // Routes with ID parameter - need special handling for user-specific routes
 router.get('/user/:userId', isAdminOrStudent, registrationController.getRegistrationsByUser);

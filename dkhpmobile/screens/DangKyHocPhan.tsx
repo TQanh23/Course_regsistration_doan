@@ -175,8 +175,11 @@ const DangKyHocPhan = () => {
               let errorMsg = 'Đăng ký học phần thất bại. Vui lòng thử lại sau.';
               if (err?.response?.data?.message) {
                 errorMsg = err.response.data.message;
+                if (errorMsg.toLowerCase().includes('schedule conflict')) {
+                  Alert.alert('Trùng lịch học', errorMsg);
+                  return;
+                }
               }
-              
               Alert.alert('Lỗi', errorMsg);
             } finally {
               setLoading(false);

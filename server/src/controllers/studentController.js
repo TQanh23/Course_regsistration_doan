@@ -530,6 +530,7 @@ const studentController = {
     getDailySchedule: async (req, res) => {
         try {
             const { date } = req.query;
+            const studentId = req.user.id;
             
             if (!date) {
                 return res.status(400).json({
@@ -547,20 +548,35 @@ const studentController = {
                 });
             }
 
-            // Query the student_class_schedules table directly
+            // Get the day of week for the given date (0=Sunday, 1=Monday, ... 6=Saturday)
+            const dayOfWeek = new Date(date).getDay();
+
+            // Query the joined tables for the student's schedule on the given date
             const [schedules] = await pool.query(`
                 SELECT 
-                    id,
-                    start_time,
-                    end_time,
-                    subject_code,
-                    subject_name,
-                    room,
-                    teacher
-                FROM student_class_schedules
-                WHERE date = ?
-                ORDER BY start_time ASC
-            `, [date]);
+                    scs.id,
+                    ts.start_time,
+                    ts.end_time,
+                    c.course_code AS subject_code,
+                    c.title AS subject_name,
+                    CONCAT(cl.building, ' ', cl.room_number) AS room,
+                    p.full_name AS teacher
+                FROM student_class_schedule scs
+                JOIN course_offerings co ON scs.course_offering_id = co.id
+                JOIN courses c ON co.course_id = c.id
+                JOIN timetable_slots ts ON scs.timetable_slot_id = ts.id
+                JOIN classrooms cl ON scs.classroom_id = cl.id
+                JOIN course_schedules cs 
+                    ON scs.course_offering_id = cs.course_offering_id
+                    AND scs.timetable_slot_id = cs.timetable_slot_id
+                    AND scs.classroom_id = cs.classroom_id
+                LEFT JOIN professors p ON cs.professor_id = p.id
+                WHERE scs.student_id = ?
+                  AND ? BETWEEN scs.start_date AND scs.end_date
+                  AND ts.day_of_week = ?
+                  AND scs.status = 'registered'
+                ORDER BY ts.start_time ASC
+            `, [studentId, date, dayOfWeek]);
             
             res.status(200).json({
                 success: true,

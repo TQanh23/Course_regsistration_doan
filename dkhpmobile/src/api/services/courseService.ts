@@ -316,7 +316,35 @@ const courseService = {
       console.error('Error fetching majors:', error);
       throw error;
     }
-  }
+  },
+
+  /**
+   * Get the full timetable for the current student (all registered courses)
+   * @returns A promise that resolves to an array of schedule items for all registered courses
+   */
+  getFullTimetable: async (): Promise<CourseScheduleItem[]> => {
+    try {
+      const response = await apiClient.get('/registrations/my-timetable');
+      // Transform the data to match our interface if needed
+      if (response.data && response.data.data) {
+        return response.data.data.map((item: any) => ({
+          id: item.id,
+          startTime: item.startTime || item.start_time,
+          endTime: item.endTime || item.end_time,
+          subjectCode: item.subjectCode || item.subject_code,
+          subjectName: item.subjectName || item.subject_name,
+          room: item.room,
+          teacher: item.teacher,
+          building: item.building,
+          classroom_id: item.classroom_id,
+        }));
+      }
+      return [];
+    } catch (error) {
+      console.error('Error fetching full timetable:', error);
+      throw error;
+    }
+  },
 };
 
 export default courseService;
