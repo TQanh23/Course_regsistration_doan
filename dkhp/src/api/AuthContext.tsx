@@ -1,5 +1,6 @@
 import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
 import api, { apiHelper } from './apiUtils';
+import axios from 'axios';
 // import { API_URL } from './api-config';
 
 // Define user type
@@ -57,7 +58,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       // Use the apiHelper login method
       const userData = await apiHelper.login(username, password, role);
-      
+      const response = await axios.post('/api/login', { username, password });
       setUser(userData);
       setIsLoggedIn(true);
       
