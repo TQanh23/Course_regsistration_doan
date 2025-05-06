@@ -1,25 +1,50 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import '../App.css';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import '../../App.css';
+import api from '../../api/apiUtils';
 
-function XacNhanEmail() {
+function XacNhanEmailQuenPass() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const email = location.state?.email || '';
+  
   // State for the 6-digit verification code
   const [verificationCode, setVerificationCode] = useState(['', '', '', '', '', '']);
   const [countdown, setCountdown] = useState(60);
-  const [isResendDisabled, setIsResendDisabled] = useState(false); // Changed to false initially
-  const [timerActive, setTimerActive] = useState(false); // New state to track if timer is running
+  const [isResendDisabled, setIsResendDisabled] = useState(false);
+  const [timerActive, setTimerActive] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+  
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const timerRef = useRef<number | null>(null);
   
-  // Sample email - in a real app, this would come from props or context
-  const maskedEmail = "lm****************@gmail.com";
+  // Mask email for display (show only first two characters and domain)
+  const maskEmail = (email: string): string => {
+    if (!email) return '';
+    
+    const parts = email.split('@');
+    if (parts.length !== 2) return email;
+    
+    const name = parts[0];
+    const domain = parts[1];
+    
+    if (name.length <= 2) return email;
+    
+    const maskedName = name.substring(0, 2) + '*'.repeat(name.length - 2);
+    return `${maskedName}@${domain}`;
+  };
+  
+  const maskedEmail = maskEmail(email);
   
   useEffect(() => {
     // Focus the first input on component mount
     if (inputRefs.current[0]) {
       inputRefs.current[0].focus();
     }
+    
+    // Start timer initially
+    setTimerActive(true);
     
     // Cleanup timer on unmount
     return () => {
@@ -32,7 +57,9 @@ function XacNhanEmail() {
   // Separate effect for managing the countdown
   useEffect(() => {
     if (timerActive) {
-      timerRef.current = setInterval(() => {
+      setIsResendDisabled(true);
+      
+      timerRef.current = window.setInterval(() => {
         setCountdown((prevCountdown) => {
           if (prevCountdown <= 1) {
             setIsResendDisabled(false);
@@ -73,31 +100,75 @@ function XacNhanEmail() {
     }
   };
   
-  const handleResend = () => {
-    // Logic to resend verification code
-    console.log('Resending verification code');
-    setVerificationCode(['', '', '', '', '', '']);
-    setCountdown(60);
-    setIsResendDisabled(true);
-    setTimerActive(true); // Start the timer when resend is clicked
+  const handleResend = async () => {
+    if (isResendDisabled) return;
     
-    // Focus the first input
-    if (inputRefs.current[0]) {
-      inputRefs.current[0].focus();
+    setIsLoading(true);
+    setError('');
+    
+    try {
+      // Call API to resend verification code
+      await api.post('/auth/resend-verification', { 
+        email,
+        purpose: 'password-reset'
+      });
+      
+      // Reset verification code inputs
+      setVerificationCode(['', '', '', '', '', '']);
+      setCountdown(60);
+      setTimerActive(true);
+      
+      // Focus the first input
+      if (inputRefs.current[0]) {
+        inputRefs.current[0].focus();
+      }
+    } catch (err: any) {
+      console.error('Resend code error:', err);
+      setError(err.message || 'Không thể gửi lại mã. Vui lòng thử lại sau.');
+    } finally {
+      setIsLoading(false);
     }
   };
   
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const code = verificationCode.join('');
-    console.log('Verifying code:', code);
     
-    // Immediately navigate to TaoMatKhauMoi page without verification
-    navigate('/tao-mat-khau-moi');
+    if (code.length !== 6) {
+      setError('Vui lòng nhập đủ 6 chữ số');
+      return;
+    }
+    
+    setIsLoading(true);
+    setError('');
+    
+    try {
+      // Call API to verify code
+      const response = await api.post('/auth/verify-code', {
+        email,
+        code,
+        purpose: 'password-reset'
+      });
+      
+      // Navigate to reset password page with token
+      const { token } = response.data;
+      navigate('/tao-mat-khau-moi', { 
+        state: { email, token }
+      });
+    } catch (err: any) {
+      console.error('Verification error:', err);
+      setError(err.message || 'Mã xác thực không đúng. Vui lòng thử lại.');
+      
+      if (err.originalError?.response?.data?.message) {
+        setError(err.originalError.response.data.message);
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  // Add this const to determine if all verification code fields are filled
-  const isFormValid = verificationCode.every(digit => digit !== '');
+  // Check if all verification code fields are filled
+  const isFormValid = verificationCode.every(digit => digit !== '') && !isLoading;
   
   return (
     <div className="verification-page">
@@ -116,8 +187,10 @@ function XacNhanEmail() {
         <h1 className="title">Xác nhận email</h1>
         <p className="subtitle">
           Vui lòng nhập mã xác thực được gửi đến email<br />
-          {maskedEmail}
+          {maskedEmail || 'của bạn'}
         </p>
+        
+        {error && <div style={{ color: '#e74c3c', marginBottom: '20px', textAlign: 'center' }}>{error}</div>}
 
         <form onSubmit={handleSubmit}>
           <div className="verification-inputs">
@@ -131,6 +204,7 @@ function XacNhanEmail() {
                 onChange={(e) => handleCodeChange(index, e.target.value)}
                 onKeyDown={(e) => handleKeyDown(index, e)}
                 className="verification-input"
+                disabled={isLoading}
               />
             ))}
           </div>
@@ -138,15 +212,15 @@ function XacNhanEmail() {
           <div className="resend-code">
             <span>Bạn chưa nhận được mã? </span>
             <span
-              onClick={!isResendDisabled ? handleResend : undefined}
+              onClick={!isResendDisabled && !isLoading ? handleResend : undefined}
               style={{
-                color: isResendDisabled ? '#aaa' : 'orange', // Changed from #007bff to orange
-                textDecoration: 'none', // Removed underline for all states
-                cursor: isResendDisabled ? 'default' : 'pointer',
-                userSelect: 'none', // Prevents text selection when clicking
+                color: isResendDisabled || isLoading ? '#aaa' : 'orange',
+                textDecoration: 'none',
+                cursor: isResendDisabled || isLoading ? 'default' : 'pointer',
+                userSelect: 'none',
               }}
               role="button"
-              tabIndex={isResendDisabled ? -1 : 0} // For accessibility
+              tabIndex={isResendDisabled || isLoading ? -1 : 0}
             >
               Gửi lại {isResendDisabled ? `(${countdown})` : ''}
             </span>
@@ -157,7 +231,7 @@ function XacNhanEmail() {
             className={isFormValid ? 'active' : 'inactive'}
             disabled={!isFormValid}
           >
-            XÁC THỰC
+            {isLoading ? 'ĐANG XỬ LÝ...' : 'XÁC THỰC'}
           </button>
         </form>
       </div>
@@ -165,4 +239,4 @@ function XacNhanEmail() {
   );
 }
 
-export default XacNhanEmail;
+export default XacNhanEmailQuenPass;
