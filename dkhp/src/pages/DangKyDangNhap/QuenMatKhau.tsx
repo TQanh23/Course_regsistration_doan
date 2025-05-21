@@ -1,13 +1,9 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import '../../App.css';
-import api from '../../api/apiUtils';
 
 function QuenMatKhau() {
   const [email, setEmail] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
   const navigate = useNavigate();
   
   // Email validation function using regex
@@ -16,41 +12,20 @@ function QuenMatKhau() {
     return emailRegex.test(email);
   };
   
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validate email
-    if (!email.trim() || !isValidEmail(email)) {
-      setError('Vui lòng nhập địa chỉ email hợp lệ');
+    // Using our validation function
+    if (!isValidEmail(email)) {
+      alert('Vui lòng nhập địa chỉ email hợp lệ');
       return;
     }
     
-    setIsLoading(true);
-    setError('');
-    setSuccess('');
+    // Handle password recovery request
+    console.log('Password recovery request for:', email);
     
-    try {
-      // Call API to request password reset
-      await api.post('/auth/forgot-password', { email });
-      
-      // Show success message
-      setSuccess('Yêu cầu đã được gửi. Vui lòng kiểm tra email của bạn.');
-      
-      // Navigate to verification page after 2 seconds
-      setTimeout(() => {
-        navigate('/verify-email-1', { state: { email } });
-      }, 2000);
-    } catch (err: any) {
-      console.error('Forgot password error:', err);
-      setError(err.message || 'Không thể gửi yêu cầu. Vui lòng thử lại sau.');
-      
-      if (err.originalError?.response?.data?.message) {
-        // Use specific error message from API if available
-        setError(err.originalError.response.data.message);
-      }
-    } finally {
-      setIsLoading(false);
-    }
+    // Navigate to verification page with email as query parameter
+    navigate(`/verify-email-1?email=${encodeURIComponent(email)}`);
   };
 
   // Check if email is valid for button state
@@ -72,11 +47,9 @@ function QuenMatKhau() {
 
         <h1 className="title">Khôi phục tài khoản</h1>
         <p className="subtitle">Nhập email để gửi yêu cầu lấy lại mật khẩu</p>
-        
-        {error && <div style={{ color: '#e74c3c', marginBottom: '20px', textAlign: 'center' }}>{error}</div>}
-        {success && <div style={{ color: '#2ecc71', marginBottom: '20px', textAlign: 'center' }}>{success}</div>}
 
         <form onSubmit={handleSubmit} style={{ width: '100%', maxWidth: '400px' }}>
+          {/* Updated input field to match Login style with extended width */}
           <div className="input-field" style={{ width: '100%' }}>
             <div className="icon-wrapper">
               <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="field-icon">
@@ -91,7 +64,6 @@ function QuenMatKhau() {
               onChange={(e) => setEmail(e.target.value)}
               placeholder=" "
               required
-              disabled={isLoading}
               style={{ width: '100%' }}
             />
             <label htmlFor="email">Email</label>
@@ -99,11 +71,11 @@ function QuenMatKhau() {
 
           <button 
             type="submit" 
-            className={isEmailValid && !isLoading ? 'active' : 'inactive'}
-            disabled={!isEmailValid || isLoading}
+            className={isEmailValid ? 'active' : 'inactive'}
+            disabled={!isEmailValid}
             style={{ width: '100%', padding: '12px 0' }}
           >
-            {isLoading ? 'ĐANG XỬ LÝ...' : 'GỬI YÊU CẦU'}
+            GỬI YÊU CẦU
           </button>
         </form>
       </div>

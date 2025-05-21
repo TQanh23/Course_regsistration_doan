@@ -240,6 +240,46 @@ const registrationController = {
         });
       }
 
+      // --- SCHEDULE CONFLICT CHECK (student_class_schedule) ---
+      // Get all timetable slots for the new course offering
+      const [newOfferingSlots] = await pool.query(`
+        SELECT timetable_slot_id, classroom_id, start_date, end_date
+        FROM course_schedules
+        WHERE course_offering_id = ?
+      `, [courseOffering[0].id]);
+
+      let conflictFound = null;
+      for (const slot of newOfferingSlots) {
+        const [conflicts] = await pool.query(`
+          SELECT scs.*, ts.day_of_week, ts.start_time, ts.end_time, co.course_id, c.title
+          FROM student_class_schedule scs
+          JOIN timetable_slots ts ON scs.timetable_slot_id = ts.id
+          JOIN course_offerings co ON scs.course_offering_id = co.id
+          JOIN courses c ON co.course_id = c.id
+          WHERE scs.student_id = ?
+            AND scs.status = 'registered'
+            AND scs.timetable_slot_id = ?
+            AND scs.start_date <= ?
+            AND scs.end_date >= ?
+        `, [
+          student_id,
+          slot.timetable_slot_id,
+          slot.end_date,
+          slot.start_date
+        ]);
+        if (conflicts.length > 0) {
+          conflictFound = conflicts[0];
+          break;
+        }
+      }
+      if (conflictFound) {
+        return res.status(400).json({
+          success: false,
+          message: `Schedule conflict with ${conflictFound.title} on ${conflictFound.day_of_week} (${conflictFound.start_time}-${conflictFound.end_time})`
+        });
+      }
+      // --- END SCHEDULE CONFLICT CHECK ---
+
       // Create registration
       const [result] = await pool.query(
         'INSERT INTO registrations (student_id, course_offering_id) VALUES (?, ?)',
@@ -251,6 +291,23 @@ const registrationController = {
         'UPDATE course_offerings SET current_enrollment = current_enrollment + 1 WHERE id = ?',
         [courseOffering[0].id]
       );
+
+      // Insert into student_class_schedule
+      for (const slot of newOfferingSlots) {
+        await pool.query(
+          `INSERT INTO student_class_schedule 
+            (student_id, course_offering_id, timetable_slot_id, classroom_id, start_date, end_date, status)
+           VALUES (?, ?, ?, ?, ?, ?, 'registered')`,
+          [
+            student_id,
+            courseOffering[0].id,
+            slot.timetable_slot_id,
+            slot.classroom_id,
+            slot.start_date,
+            slot.end_date
+          ]
+        );
+      }
 
       // Get the created registration with details
       const [newRegistration] = await pool.query(`
@@ -469,6 +526,12 @@ const registrationController = {
           [reg.course_offering_id]
         );
       }
+
+      // Update student_class_schedule status to 'dropped'
+      await pool.query(
+        'UPDATE student_class_schedule SET status = "dropped" WHERE student_id = ? AND course_offering_id = ? AND status = "registered"',
+        [reg.student_id, reg.course_offering_id]
+      );
 
       res.status(200).json({
         success: true,
@@ -888,7 +951,6 @@ const registrationController = {
       // Process each registration individually to ensure proper validation
       for (const registration of registrations) {
         const { courseId, termId } = registration;
-
         try {
           // Check if course exists and is active
           const [course] = await pool.query(
@@ -960,6 +1022,47 @@ const registrationController = {
             continue;
           }
 
+          // --- SCHEDULE CONFLICT CHECK (student_class_schedule) ---
+          const [newOfferingSlots] = await pool.query(`
+            SELECT timetable_slot_id, classroom_id, start_date, end_date
+            FROM course_schedules
+            WHERE course_offering_id = ?
+          `, [courseOffering[0].id]);
+
+          let conflictFound = null;
+          for (const slot of newOfferingSlots) {
+            const [conflicts] = await pool.query(`
+              SELECT scs.*, ts.day_of_week, ts.start_time, ts.end_time, co.course_id, c.title
+              FROM student_class_schedule scs
+              JOIN timetable_slots ts ON scs.timetable_slot_id = ts.id
+              JOIN course_offerings co ON scs.course_offering_id = co.id
+              JOIN courses c ON co.course_id = c.id
+              WHERE scs.student_id = ?
+                AND scs.status = 'registered'
+                AND scs.timetable_slot_id = ?
+                AND scs.start_date <= ?
+                AND scs.end_date >= ?
+            `, [
+              student_id,
+              slot.timetable_slot_id,
+              slot.end_date,
+              slot.start_date
+            ]);
+            if (conflicts.length > 0) {
+              conflictFound = conflicts[0];
+              break;
+            }
+          }
+          if (conflictFound) {
+            results.failed.push({
+              courseId,
+              termId,
+              reason: `Schedule conflict with ${conflictFound.title} on ${conflictFound.day_of_week} (${conflictFound.start_time}-${conflictFound.end_time})`
+            });
+            continue;
+          }
+          // --- END SCHEDULE CONFLICT CHECK ---
+
           // All validation passed, create registration
           const [result] = await pool.query(
             'INSERT INTO registrations (student_id, course_offering_id) VALUES (?, ?)',
@@ -971,6 +1074,23 @@ const registrationController = {
             'UPDATE course_offerings SET current_enrollment = current_enrollment + 1 WHERE id = ?',
             [courseOffering[0].id]
           );
+
+          // Insert into student_class_schedule
+          for (const slot of newOfferingSlots) {
+            await pool.query(
+              `INSERT INTO student_class_schedule 
+                (student_id, course_offering_id, timetable_slot_id, classroom_id, start_date, end_date, status)
+               VALUES (?, ?, ?, ?, ?, ?, 'registered')`,
+              [
+                student_id,
+                courseOffering[0].id,
+                slot.timetable_slot_id,
+                slot.classroom_id,
+                slot.start_date,
+                slot.end_date
+              ]
+            );
+          }
 
           // Add to successful registrations
           results.success.push({
@@ -1131,6 +1251,12 @@ const registrationController = {
             );
           }
 
+          // Update student_class_schedule status to 'dropped'
+          await pool.query(
+            'UPDATE student_class_schedule SET status = "dropped" WHERE student_id = ? AND course_offering_id = ? AND status = "registered"',
+            [reg.student_id, reg.course_offering_id]
+          );
+
           // Add to successful drops
           results.success.push({
             registrationId,
@@ -1166,7 +1292,49 @@ const registrationController = {
         error: process.env.NODE_ENV === 'development' ? error.message : undefined
       });
     }
-  }
+  },
+
+  /**
+   * Get timetable for the current student
+   * @route GET /api/registrations/my-timetable
+   * @access Private (Student only)
+   */
+  getMyTimetable: async (req, res) => {
+    try {
+      const studentId = req.user.id;
+      if (req.user.role !== 'student') {
+        return res.status(403).json({ success: false, message: 'Student access only.' });
+      }
+      // Query all schedule items for all active registrations
+      const [rows] = await pool.query(`
+        SELECT 
+          scs.id,
+          ts.day_of_week as day,
+          ts.start_time as startTime,
+          ts.end_time as endTime,
+          c.course_code as subjectCode,
+          c.title as subjectName,
+          CONCAT(cl.building, ' ', cl.room_number) as room,
+          p.full_name as teacher,
+          cl.building,
+          cl.id as classroom_id,
+          scs.start_date,
+          scs.end_date
+        FROM student_class_schedule scs
+        JOIN course_offerings co ON scs.course_offering_id = co.id
+        JOIN courses c ON co.course_id = c.id
+        JOIN timetable_slots ts ON scs.timetable_slot_id = ts.id
+        JOIN classrooms cl ON scs.classroom_id = cl.id
+        LEFT JOIN professors p ON co.professor_id = p.id OR scs.status = 'registered'
+        WHERE scs.student_id = ? AND scs.status = 'registered'
+        ORDER BY ts.day_of_week, ts.start_time
+      `, [studentId]);
+      res.status(200).json({ success: true, count: rows.length, data: rows });
+    } catch (error) {
+      console.error('Error fetching timetable:', error);
+      res.status(500).json({ success: false, message: 'Server error while fetching timetable' });
+    }
+  },
 };
 
 module.exports = registrationController;

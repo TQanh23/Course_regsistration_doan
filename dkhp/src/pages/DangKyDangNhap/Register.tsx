@@ -2,16 +2,23 @@ import { useState } from 'react'
 import '../../App.css'
 import React from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import api from '../../api/apiUtils'
 
 function Register() {
   const [username, setUsername] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState('')
-  const navigate = useNavigate()
+  const navigate = useNavigate() // Add this line to use the navigation hook
+
+  const handleRegister = (e: React.FormEvent) => {
+    e.preventDefault()
+    // Xử lý đăng ký ở đây
+    console.log('Register attempt:', { username, email, password, confirmPassword })
+    
+    // Navigate to XacNhanEmail page after registration submission
+    // Pass the email as a query parameter
+    navigate(`/verify-email-2?email=${encodeURIComponent(email)}`);
+  }
 
   // Add email validation function
   const isValidEmail = (email: string): boolean => {
@@ -19,68 +26,14 @@ function Register() {
     return emailRegex.test(email);
   };
 
-  const handleRegister = async (e: React.FormEvent) => {
-    e.preventDefault()
-    
-    // Validate form fields
-    if (!username.trim()) {
-      setError('Vui lòng nhập tên đăng nhập');
-      return;
-    }
-    
-    if (!email.trim() || !isValidEmail(email)) {
-      setError('Vui lòng nhập địa chỉ email hợp lệ');
-      return;
-    }
-    
-    if (!password.trim() || password.length < 6) {
-      setError('Mật khẩu phải có ít nhất 6 ký tự');
-      return;
-    }
-    
-    if (password !== confirmPassword) {
-      setError('Mật khẩu xác nhận không khớp');
-      return;
-    }
-    
-    setIsLoading(true);
-    setError('');
-    
-    try {
-      // Call the registration API
-      await api.post('/auth/register', {
-        username,
-        email,
-        password,
-        role: 'admin' // Register as admin for web admin app
-      });
-      
-      console.log('Registration successful');
-      
-      // Navigate to email verification page
-      navigate('/verify-email-2', { state: { email } });
-    } catch (err: any) {
-      console.error('Registration error:', err);
-      setError(err.message || 'Đăng ký thất bại. Vui lòng thử lại sau.');
-      
-      if (err.originalError?.response?.data?.message) {
-        // Use specific error message from API if available
-        setError(err.originalError.response.data.message);
-      }
-    } finally {
-      setIsLoading(false);
-    }
-  }
-
-  // Check form validity
+  // Update the isFormValid check to include email validation and password matching
   const isFormValid = 
     username.trim() !== '' && 
     email.trim() !== '' && 
-    isValidEmail(email) &&
+    isValidEmail(email) &&  // Check if email format is valid
     password.trim() !== '' && 
-    password.length >= 6 &&
     confirmPassword.trim() !== '' &&
-    password === confirmPassword;
+    password === confirmPassword; // Check if passwords match
 
   return (
     <div className="app">
@@ -89,12 +42,6 @@ function Register() {
           <img src="/huce-logo.png" alt="HUCE Logo" />
         </div>
         <h1 style={{ fontSize: '35px' }}>Đăng ký tài khoản</h1>
-        
-        {error && (
-          <div className="error-message">
-            {error}
-          </div>
-        )}
         
         <form onSubmit={handleRegister}>
           <div className="input-field">
@@ -107,7 +54,6 @@ function Register() {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               placeholder=" "
-              disabled={isLoading}
             />
             <label htmlFor="username">Tên đăng nhập</label>
           </div>
@@ -122,7 +68,6 @@ function Register() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder=" "
-              disabled={isLoading}
             />
             <label htmlFor="email">Email</label>
           </div>
@@ -137,7 +82,6 @@ function Register() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder=" "
-              disabled={isLoading}
             />
             <label htmlFor="password">Mật khẩu</label>
           </div>
@@ -152,23 +96,22 @@ function Register() {
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               placeholder=" "
-              disabled={isLoading}
             />
             <label htmlFor="confirmPassword">Xác nhận mật khẩu</label>
           </div>
 
           <button 
             type="submit" 
-            className={isFormValid && !isLoading ? 'active' : 'inactive'}
-            disabled={!isFormValid || isLoading}
+            className={isFormValid ? 'active' : 'inactive'}
+            disabled={!isFormValid}
           >
-            {isLoading ? 'ĐANG XỬ LÝ...' : 'ĐĂNG KÝ'}
+            ĐĂNG KÝ
           </button>
         </form>
 
         <div className="register-link">
           <span>Đã có tài khoản? </span>
-          <Link to="/login">Đăng nhập</Link>
+          <Link to="/">Đăng nhập</Link>
         </div>
       </div>
     </div>

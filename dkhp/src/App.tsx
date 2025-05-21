@@ -1,17 +1,10 @@
-import { ReactNode } from 'react'
-import { AuthProvider } from './api/AuthContext'
-import './App.css'
+import React from 'react'
+import ReactDOM from 'react-dom/client'
+import App from './main.tsx'
+import './index.css'
 
-interface AppProps {
-  children: ReactNode;
-}
-
-function App({ children }: AppProps) {
-  return (
-    <AuthProvider>
-      {children}
-    </AuthProvider>
-  )
-}
-
-export default App
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+)

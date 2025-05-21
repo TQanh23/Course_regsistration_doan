@@ -5,6 +5,7 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { getStudentProfile } from '../src/api/services/studentService';
+import { useAuth } from '../src/api/context/AuthContext';
 // Define the navigation param list type
 export type RootStackParamList = {
   TrangChuScreen: undefined;
@@ -20,6 +21,7 @@ type ThongTinCaNhanNavigationProp = StackNavigationProp<RootStackParamList, 'Tho
 const ThongTinCaNhan = () => {
   const navigation = useNavigation<ThongTinCaNhanNavigationProp>();
   const [userInfo, setUserInfo] = useState<any>(null);
+  const { logout, loading: logoutLoading } = useAuth();
 
   const navigateToThongBao = () => {
     navigation.navigate('ThongBao');
@@ -166,6 +168,13 @@ const ThongTinCaNhan = () => {
           </View>
         </View>
       </ScrollView>
+      <TouchableOpacity
+        style={styles.logoutButton}
+        onPress={logout}
+        disabled={logoutLoading}
+      >
+        <Text style={styles.logoutButtonText}>{logoutLoading ? 'Đang đăng xuất...' : 'Đăng xuất'}</Text>
+      </TouchableOpacity>
     </SafeAreaView>
   );
 };
@@ -272,6 +281,18 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#000',
     fontWeight: '600',
+  },
+  logoutButton: {
+    backgroundColor: '#e53935',
+    margin: 16,
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  logoutButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 16,
   },
 });
 

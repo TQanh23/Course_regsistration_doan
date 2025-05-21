@@ -6,7 +6,7 @@
  */
 
 // Default API URL - change this to match your environment
-const DEFAULT_API_URL = 'http://localhost:3001/api';
+const DEFAULT_API_URL = 'http://localhost:3000/api';
 
 // Get the API URL from environment variables if available (for production builds)
 // For Vite + React web app
@@ -41,11 +41,16 @@ const ENDPOINTS = {
     PROFILE: '/user/profile',
     UPDATE_PROFILE: '/user/update-profile',
     CHANGE_PASSWORD: '/user/change-password',
+    VERIFY_EMAIL: '/user/verify-email',
+    RESEND_VERIFICATION: '/user/resend-verification',
   },
   ADMIN: {
     DASHBOARD: '/admin/dashboard',
     USERS: '/admin/users',
     SETTINGS: '/admin/settings',
+    ACCOUNTS: '/admin/accounts',
+    ACCOUNT_DETAIL: '/admin/accounts/:id',
+    RESET_ACCOUNT_PASSWORD: '/admin/accounts/:id/reset-password',
   },
   STUDENT: {
     COURSES: '/student/courses',

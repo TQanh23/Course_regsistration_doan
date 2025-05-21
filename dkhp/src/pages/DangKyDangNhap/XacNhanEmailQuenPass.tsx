@@ -1,50 +1,48 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import '../../App.css';
-import api from '../../api/apiUtils';
 
-function XacNhanEmailQuenPass() {
+function XacNhanEmail() {
   const navigate = useNavigate();
-  const location = useLocation();
-  const email = location.state?.email || '';
-  
   // State for the 6-digit verification code
   const [verificationCode, setVerificationCode] = useState(['', '', '', '', '', '']);
   const [countdown, setCountdown] = useState(60);
-  const [isResendDisabled, setIsResendDisabled] = useState(false);
-  const [timerActive, setTimerActive] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
-  
+  const [isResendDisabled, setIsResendDisabled] = useState(false); // Changed to false initially
+  const [timerActive, setTimerActive] = useState(false); // New state to track if timer is running
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const timerRef = useRef<number | null>(null);
   
-  // Mask email for display (show only first two characters and domain)
-  const maskEmail = (email: string): string => {
-    if (!email) return '';
+  // Get email from navigation state
+  const [email, setEmail] = useState("");
+  
+  // Function to mask email (show first 2 chars and domain)
+  const getMaskedEmail = (email: string) => {
+    if (!email) return "";
+    const atIndex = email.indexOf('@');
+    if (atIndex <= 2) return email; // Don't mask if email is too short
     
-    const parts = email.split('@');
-    if (parts.length !== 2) return email;
-    
-    const name = parts[0];
-    const domain = parts[1];
-    
-    if (name.length <= 2) return email;
-    
-    const maskedName = name.substring(0, 2) + '*'.repeat(name.length - 2);
-    return `${maskedName}@${domain}`;
+    return email.substring(0, 2) + 
+           '*'.repeat(atIndex - 2) + 
+           email.substring(atIndex);
   };
   
-  const maskedEmail = maskEmail(email);
+  // Get the masked version of the email
+  const maskedEmail = getMaskedEmail(email);
   
   useEffect(() => {
+    // Get email from location state if available
+    const location = window.location;
+    const searchParams = new URLSearchParams(location.search);
+    const emailParam = searchParams.get('email');
+    
+    if (emailParam) {
+      setEmail(emailParam);
+    }
+    
     // Focus the first input on component mount
     if (inputRefs.current[0]) {
       inputRefs.current[0].focus();
     }
-    
-    // Start timer initially
-    setTimerActive(true);
     
     // Cleanup timer on unmount
     return () => {
@@ -57,8 +55,7 @@ function XacNhanEmailQuenPass() {
   // Separate effect for managing the countdown
   useEffect(() => {
     if (timerActive) {
-      setIsResendDisabled(true);
-      
+      if (timerRef.current) clearInterval(timerRef.current);
       timerRef.current = window.setInterval(() => {
         setCountdown((prevCountdown) => {
           if (prevCountdown <= 1) {
@@ -100,75 +97,32 @@ function XacNhanEmailQuenPass() {
     }
   };
   
-  const handleResend = async () => {
-    if (isResendDisabled) return;
+  const handleResend = () => {
+    // Logic to resend verification code
+    console.log('Resending verification code');
+    setVerificationCode(['', '', '', '', '', '']);
+    setCountdown(60);
+    setIsResendDisabled(true);
+    setTimerActive(true); // Start the timer when resend is clicked
     
-    setIsLoading(true);
-    setError('');
-    
-    try {
-      // Call API to resend verification code
-      await api.post('/auth/resend-verification', { 
-        email,
-        purpose: 'password-reset'
-      });
-      
-      // Reset verification code inputs
-      setVerificationCode(['', '', '', '', '', '']);
-      setCountdown(60);
-      setTimerActive(true);
-      
-      // Focus the first input
-      if (inputRefs.current[0]) {
-        inputRefs.current[0].focus();
-      }
-    } catch (err: any) {
-      console.error('Resend code error:', err);
-      setError(err.message || 'Không thể gửi lại mã. Vui lòng thử lại sau.');
-    } finally {
-      setIsLoading(false);
+    // Focus the first input
+    if (inputRefs.current[0]) {
+      inputRefs.current[0].focus();
     }
   };
   
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const code = verificationCode.join('');
+    console.log('Verifying code:', code);
     
-    if (code.length !== 6) {
-      setError('Vui lòng nhập đủ 6 chữ số');
-      return;
-    }
-    
-    setIsLoading(true);
-    setError('');
-    
-    try {
-      // Call API to verify code
-      const response = await api.post('/auth/verify-code', {
-        email,
-        code,
-        purpose: 'password-reset'
-      });
-      
-      // Navigate to reset password page with token
-      const { token } = response.data;
-      navigate('/tao-mat-khau-moi', { 
-        state: { email, token }
-      });
-    } catch (err: any) {
-      console.error('Verification error:', err);
-      setError(err.message || 'Mã xác thực không đúng. Vui lòng thử lại.');
-      
-      if (err.originalError?.response?.data?.message) {
-        setError(err.originalError.response.data.message);
-      }
-    } finally {
-      setIsLoading(false);
-    }
+    // Immediately navigate to TaoMatKhauMoi page without verification
+    // Pass the email to the next page
+    navigate(`/tao-mat-khau-moi?email=${email}`);
   };
 
-  // Check if all verification code fields are filled
-  const isFormValid = verificationCode.every(digit => digit !== '') && !isLoading;
+  // Add this const to determine if all verification code fields are filled
+  const isFormValid = verificationCode.every(digit => digit !== '');
   
   return (
     <div className="verification-page">
@@ -187,10 +141,8 @@ function XacNhanEmailQuenPass() {
         <h1 className="title">Xác nhận email</h1>
         <p className="subtitle">
           Vui lòng nhập mã xác thực được gửi đến email<br />
-          {maskedEmail || 'của bạn'}
+          {maskedEmail}
         </p>
-        
-        {error && <div style={{ color: '#e74c3c', marginBottom: '20px', textAlign: 'center' }}>{error}</div>}
 
         <form onSubmit={handleSubmit}>
           <div className="verification-inputs">
@@ -204,7 +156,6 @@ function XacNhanEmailQuenPass() {
                 onChange={(e) => handleCodeChange(index, e.target.value)}
                 onKeyDown={(e) => handleKeyDown(index, e)}
                 className="verification-input"
-                disabled={isLoading}
               />
             ))}
           </div>
@@ -212,15 +163,15 @@ function XacNhanEmailQuenPass() {
           <div className="resend-code">
             <span>Bạn chưa nhận được mã? </span>
             <span
-              onClick={!isResendDisabled && !isLoading ? handleResend : undefined}
+              onClick={!isResendDisabled ? handleResend : undefined}
               style={{
-                color: isResendDisabled || isLoading ? '#aaa' : 'orange',
-                textDecoration: 'none',
-                cursor: isResendDisabled || isLoading ? 'default' : 'pointer',
-                userSelect: 'none',
+                color: isResendDisabled ? '#aaa' : 'orange', // Changed from #007bff to orange
+                textDecoration: 'none', // Removed underline for all states
+                cursor: isResendDisabled ? 'default' : 'pointer',
+                userSelect: 'none', // Prevents text selection when clicking
               }}
               role="button"
-              tabIndex={isResendDisabled || isLoading ? -1 : 0}
+              tabIndex={isResendDisabled ? -1 : 0} // For accessibility
             >
               Gửi lại {isResendDisabled ? `(${countdown})` : ''}
             </span>
@@ -231,7 +182,7 @@ function XacNhanEmailQuenPass() {
             className={isFormValid ? 'active' : 'inactive'}
             disabled={!isFormValid}
           >
-            {isLoading ? 'ĐANG XỬ LÝ...' : 'XÁC THỰC'}
+            XÁC THỰC
           </button>
         </form>
       </div>
@@ -239,4 +190,4 @@ function XacNhanEmailQuenPass() {
   );
 }
 
-export default XacNhanEmailQuenPass;
+export default XacNhanEmail;

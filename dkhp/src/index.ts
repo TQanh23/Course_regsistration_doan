@@ -4,7 +4,7 @@ import cors from 'cors';
 
 // Khởi tạo ứng dụng Express
 const app = express();
-const PORT = 3001;
+const PORT = 3000;
 
 // Cấu hình CORS
 app.use(cors({

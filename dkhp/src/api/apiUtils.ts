@@ -1,5 +1,5 @@
 import axios from 'axios';
-// import { API_URL, API_TIMEOUT, INCLUDE_CREDENTIALS } from './api-config';
+import { API_URL, API_TIMEOUT, INCLUDE_CREDENTIALS } from './api-config';
 
 // Create axios instance with default config
 const api = axios.create({
@@ -82,7 +82,7 @@ api.interceptors.response.use(
   }
 );
 
-// Export the configured axios instance
+// Export the configured API instance
 export default api;
 
 // Helper methods for common API operations
