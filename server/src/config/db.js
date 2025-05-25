@@ -13,6 +13,14 @@ const pool = mysql.createPool({
   queueLimit: 0
 });
 
+// Delete this when testing
+const connection = mysql.createConnection({
+  host: 'localhost',
+  user: 'root',
+  password: 'Kuonng17724@',
+  database: 'dkhp'
+});
+
 // Test connection function - use this to verify database connectivity
 async function testConnection() {
   try {

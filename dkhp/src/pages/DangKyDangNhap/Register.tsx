@@ -2,38 +2,68 @@ import { useState } from 'react'
 import '../../App.css'
 import React from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import authService from '../../api/auth-service'
 
 function Register() {
   const [username, setUsername] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
-  const navigate = useNavigate() // Add this line to use the navigation hook
+  const [error, setError] = useState('')
+  const navigate = useNavigate()
 
-  const handleRegister = (e: React.FormEvent) => {
-    e.preventDefault()
-    // Xử lý đăng ký ở đây
-    console.log('Register attempt:', { username, email, password, confirmPassword })
-    
-    // Navigate to XacNhanEmail page after registration submission
-    // Pass the email as a query parameter
-    navigate(`/verify-email-2?email=${encodeURIComponent(email)}`);
+  const isValidEmail = (email: string): boolean => {
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/
+    return emailRegex.test(email)
   }
 
-  // Add email validation function
-  const isValidEmail = (email: string): boolean => {
-    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-    return emailRegex.test(email);
-  };
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError('')
 
-  // Update the isFormValid check to include email validation and password matching
+    if (!username || !email || !password || !confirmPassword) {
+      setError('Vui lòng điền đầy đủ thông tin')
+      return
+    }
+
+    if (!isValidEmail(email)) {
+      setError('Email không hợp lệ')
+      return
+    }
+
+    if (password !== confirmPassword) {
+      setError('Mật khẩu xác nhận không khớp')
+      return
+    }
+
+    if (password.length < 8) {
+      setError('Mật khẩu phải có ít nhất 8 ký tự')
+      return
+    }
+
+    try {
+      await authService.register({
+        username,
+        email,
+        password,
+        role: 'admin'
+      })
+      
+      // Registration successful, navigate to verification page
+      navigate(`/verify-email-2?email=${encodeURIComponent(email)}`)
+    } catch (err: any) {
+      setError(err.toString())
+    }
+  }
+
   const isFormValid = 
     username.trim() !== '' && 
     email.trim() !== '' && 
-    isValidEmail(email) &&  // Check if email format is valid
+    isValidEmail(email) && 
     password.trim() !== '' && 
     confirmPassword.trim() !== '' &&
-    password === confirmPassword; // Check if passwords match
+    password === confirmPassword &&
+    password.length >= 8
 
   return (
     <div className="app">
@@ -41,7 +71,13 @@ function Register() {
         <div className="logo">
           <img src="/huce-logo.png" alt="HUCE Logo" />
         </div>
-        <h1 style={{ fontSize: '35px' }}>Đăng ký tài khoản</h1>
+        <h1 style={{ fontSize: '35px' }}>Đăng ký tài khoản Admin</h1>
+        
+        {error && (
+          <div className="error-message" style={{ color: 'red', marginBottom: '10px' }}>
+            {error}
+          </div>
+        )}
         
         <form onSubmit={handleRegister}>
           <div className="input-field">

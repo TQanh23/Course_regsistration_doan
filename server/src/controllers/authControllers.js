@@ -94,30 +94,84 @@ exports.login = async (req, res) => {
 };
 
 /**
- * Register a new student
+ * Register a new student or admin
  */
 exports.register = async (req, res) => {
   try {
     const { 
       username, 
-      password, 
+      password,
+      email,
+      role, // Added role field
       student_id,
-      email, 
       full_name, 
       date_of_birth,
       program_id,
       class: class_name
     } = req.body;
     
-    // Validate required fields
-    if (!username || !password || !student_id || !email || !full_name || !program_id) {
+    if (!username || !password || !email || !role) {
       return res.status(400).json({
         success: false,
-        message: 'Missing required fields'
+        message: 'Username, password, email and role are required'
       });
     }
-    
-    // Check if program_id exists
+
+    if (role !== 'admin' && role !== 'student') {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid role. Must be either admin or student'
+      });
+    }
+
+    // Handle admin registration
+    if (role === 'admin') {
+      // Check if username or email already exists for admin
+      const [existingAdmin] = await pool.query(
+        'SELECT username, email FROM admins WHERE username = ? OR email = ?',
+        [username, email]
+      );
+
+      if (existingAdmin.length > 0) {
+        let message = 'Registration failed: ';
+        if (existingAdmin.some(admin => admin.username === username)) {
+          message += 'Username already exists. ';
+        }
+        if (existingAdmin.some(admin => admin.email === email)) {
+          message += 'Email already exists. ';
+        }
+        return res.status(400).json({
+          success: false,
+          message: message.trim()
+        });
+      }
+
+      // Hash password
+      const hashedPassword = await bcrypt.hash(password, 10);
+      
+      // Insert new admin
+      const [result] = await pool.query(
+        'INSERT INTO admins (username, password_admin, email) VALUES (?, ?, ?)',
+        [username, hashedPassword, email]
+      );
+      
+      return res.status(201).json({
+        success: true,
+        message: 'Admin registration successful',
+        userId: result.insertId
+      });
+    }
+
+    // Handle student registration
+    // Validate student-specific required fields
+    if (!student_id || !full_name || !program_id) {
+      return res.status(400).json({
+        success: false,
+        message: 'Student ID, full name, and program ID are required for student registration'
+      });
+    }
+
+    // Proceed with existing student registration logic
     const [programs] = await pool.query('SELECT * FROM academic_programs WHERE id = ?', [program_id]);
     if (programs.length === 0) {
       return res.status(400).json({
@@ -143,18 +197,9 @@ exports.register = async (req, res) => {
       if (existingUsers.some(user => user.email === email)) {
         message += 'Email already exists. ';
       }
-      
       return res.status(400).json({
         success: false,
         message: message.trim()
-      });
-    }
-    
-    // Validate password strength
-    if (password.length < 8) {
-      return res.status(400).json({
-        success: false,
-        message: 'Password must be at least 8 characters long'
       });
     }
     
@@ -181,7 +226,7 @@ exports.register = async (req, res) => {
     
     res.status(201).json({
       success: true,
-      message: 'Registration successful',
+      message: 'Student registration successful',
       userId: result.insertId
     });
   } catch (error) {
@@ -341,5 +386,59 @@ exports.refreshToken = async (req, res) => {
       message: 'Failed to refresh token',
       error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
+  }
+};
+
+/**
+ * Forgot password (send reset code to email)
+ */
+exports.forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ success: false, message: 'Email is required' });
+    }
+    // Kiểm tra email có tồn tại trong hệ thống không
+    const [users] = await pool.query('SELECT * FROM students WHERE email = ?', [email]);
+    if (users.length === 0) {
+      return res.status(404).json({ success: false, message: 'Email không tồn tại trong hệ thống' });
+    }
+    // TODO: Gửi mã xác nhận qua email ở đây (có thể dùng nodemailer hoặc chỉ trả về thành công)
+    // Ví dụ đơn giản:
+    // const code = Math.floor(100000 + Math.random() * 900000);
+    // Lưu code vào DB hoặc cache nếu muốn xác thực bước tiếp theo
+    // await sendEmail(email, code);
+    return res.status(200).json({ success: true, message: 'Đã gửi yêu cầu đặt lại mật khẩu (demo)' });
+  } catch (error) {
+    console.error('Forgot password error:', error);
+    res.status(500).json({ success: false, message: 'Có lỗi xảy ra khi gửi yêu cầu quên mật khẩu' });
+  }
+};
+
+/**
+ * Reset password (đặt lại mật khẩu mới cho sinh viên)
+ */
+exports.resetPassword = async (req, res) => {
+  try {
+    const { email, newPassword } = req.body;
+    if (!email || !newPassword) {
+      return res.status(400).json({ success: false, message: 'Email và mật khẩu mới là bắt buộc' });
+    }
+    if (newPassword.length < 8) {
+      return res.status(400).json({ success: false, message: 'Mật khẩu phải có ít nhất 8 ký tự' });
+    }
+    // Kiểm tra email tồn tại
+    const [users] = await pool.query('SELECT * FROM students WHERE email = ?', [email]);
+    if (users.length === 0) {
+      return res.status(404).json({ success: false, message: 'Email không tồn tại trong hệ thống' });
+    }
+    // Hash mật khẩu mới
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    // Cập nhật mật khẩu
+    await pool.query('UPDATE students SET password_student = ? WHERE email = ?', [hashedPassword, email]);
+    return res.status(200).json({ success: true, message: 'Đặt lại mật khẩu thành công' });
+  } catch (error) {
+    console.error('Reset password error:', error);
+    res.status(500).json({ success: false, message: 'Có lỗi xảy ra khi đặt lại mật khẩu' });
   }
 };

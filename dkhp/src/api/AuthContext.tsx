@@ -1,138 +1,132 @@
-import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
-import api, { apiHelper } from './apiUtils';
-import axios from 'axios';
-// import { API_URL } from './api-config';
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import authService from './auth-service';
 
-// Define user type
 interface User {
-  id: string;
+  id: number;
   username: string;
   email: string;
   role: string;
-  firstName?: string;
-  lastName?: string;
-  [key: string]: any; // Allow for additional properties
+  [key: string]: any;
 }
 
-// Define context type
 interface AuthContextType {
   isLoggedIn: boolean;
   user: User | null;
   isLoading: boolean;
+  isAuthenticating: boolean;
   login: (username: string, password: string, role?: string) => Promise<void>;
   logout: () => Promise<void>;
   checkAuthStatus: () => Promise<boolean>;
 }
 
-// Create context with default values
 const AuthContext = createContext<AuthContextType>({
   isLoggedIn: false,
   user: null,
-  isLoading: true,
+  isLoading: false,
+  isAuthenticating: false,
   login: async () => {},
   logout: async () => {},
   checkAuthStatus: async () => false
 });
 
-// Provider component
-interface AuthProviderProps {
-  children: ReactNode;
-}
-
-export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
+export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isAuthenticating, setIsAuthenticating] = useState<boolean>(false);
 
-  // Check authentication status on mount
+  // Initialize authentication state
   useEffect(() => {
-    checkAuthStatus().finally(() => {
-      setIsLoading(false);
-    });
+    const initAuth = async () => {
+      try {
+        const isValid = await authService.checkAuthStatus();
+        if (isValid) {
+          const userData = authService.getCurrentUser();
+          if (userData) {
+            setUser(userData);
+            setIsLoggedIn(true);
+          }
+        }
+      } catch (error) {
+        console.error('Auth initialization error:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    initAuth();
   }, []);
 
-  // Login function
-  const login = async (username: string, password: string, role?: string) => {
-    setIsLoading(true);
-    
+  const login = async (username: string, password: string, role: string = 'admin'): Promise<void> => {
+    setIsAuthenticating(true);
     try {
-      // Use the apiHelper login method
-      const userData = await apiHelper.login(username, password, role);
-      const response = await axios.post('/api/login', { username, password });
-      setUser(userData);
-      setIsLoggedIn(true);
-      
-      return userData;
-    } catch (error) {
-      console.error('Login error in context:', error);
-      throw error;
+      const response = await authService.login(username, password, role);
+      if (response.success && response.user) {
+        setUser(response.user);
+        setIsLoggedIn(true);
+      } else {
+        throw new Error(response.message || 'Login failed');
+      }
     } finally {
-      setIsLoading(false);
+      setIsAuthenticating(false);
     }
   };
 
-  // Logout function
-  const logout = async () => {
-    setIsLoading(true);
-    
+  const logout = async (): Promise<void> => {
     try {
-      await apiHelper.logout();
-    } catch (error) {
-      console.error('Logout error:', error);
+      await authService.logout();
     } finally {
-      // Clear user state regardless of API success
       setUser(null);
       setIsLoggedIn(false);
-      setIsLoading(false);
     }
   };
 
-  // Check if user is already logged in
   const checkAuthStatus = async (): Promise<boolean> => {
-    // Check for token in localStorage
-    const token = localStorage.getItem('authToken');
-    
-    if (!token) {
-      setIsLoggedIn(false);
-      setUser(null);
-      return false;
-    }
-    
     try {
-      // Validate token and get user data
-      const response = await api.get('/auth/me');
-      const userData = response.data;
-      
-      setUser(userData);
-      setIsLoggedIn(true);
-      return true;
+      const isValid = await authService.checkAuthStatus();
+      if (isValid) {
+        const userData = authService.getCurrentUser();
+        if (userData) {
+          setUser(userData);
+          setIsLoggedIn(true);
+          return true;
+        }
+      }
+      setUser(null);
+      setIsLoggedIn(false);
+      return false;
     } catch (error) {
       console.error('Auth check failed:', error);
-      
-      // Clear invalid auth data
-      localStorage.removeItem('authToken');
-      localStorage.removeItem('refreshToken');
-      
-      setIsLoggedIn(false);
       setUser(null);
+      setIsLoggedIn(false);
       return false;
     }
   };
 
-  const value = {
-    isLoggedIn,
-    user,
-    isLoading,
-    login,
-    logout,
-    checkAuthStatus
-  };
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider
+      value={{
+        isLoggedIn,
+        user,
+        isLoading,
+        isAuthenticating,
+        login,
+        logout,
+        checkAuthStatus,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
 };
 
 // Custom hook for using auth context
-export const useAuth = () => useContext(AuthContext);
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+};
 
-// Web version of the auth hook
 export default { AuthProvider, useAuth };
