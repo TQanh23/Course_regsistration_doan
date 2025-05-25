@@ -98,6 +98,19 @@ const authService = {
       localStorage.removeItem('userData');
       delete apiClient.defaults.headers.common['Authorization'];
     }
+  },
+
+  async register(registerData: { username: string; email: string; password: string; role: string }): Promise<void> {
+    try {
+      const response = await apiClient.post('/auth/register', registerData);
+      
+      if (!response.data.success) {
+        throw new Error(response.data.message || 'Registration failed');
+      }
+    } catch (error: any) {
+      console.error('Registration failed:', error);
+      throw error.response?.data?.message || 'Registration failed';
+    }
   }
 };
 
