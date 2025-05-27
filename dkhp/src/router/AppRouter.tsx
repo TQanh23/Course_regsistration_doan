@@ -9,6 +9,8 @@ import QuenMatKhau from '../pages/DangKyDangNhap/QuenMatKhau';
 import XacNhanEmailQuenPass from '../pages/DangKyDangNhap/XacNhanEmailQuenPass';
 import XacNhanEmailDangKy from '../pages/DangKyDangNhap/XacNhanEmailDangKy';
 import TaoMatKhauMoi from '../pages/DangKyDangNhap/TaoMatKhauMoi';
+import QuanLyTaiKhoan from '../pages/QuanLyTaiKhoan/QuanLyTaiKhoan';
+import QuanLyMonHoc from '../pages/QuanLyMonHoc/QuanLyMonHoc';
 
 // Import a placeholder Dashboard component
 const Dashboard = () => <div>Dashboard Content</div>;
@@ -31,6 +33,8 @@ const AppRouter = () => {
           {/* Protected routes for admin */}
           <Route element={<ProtectedRoute requiredRole="admin" />}>
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/quan-ly-tai-khoan" element={<QuanLyTaiKhoan />} />
+            <Route path="/quan-ly-mon-hoc" element={<QuanLyMonHoc /> } />
             {/* Add more admin routes here */}
           </Route>
           

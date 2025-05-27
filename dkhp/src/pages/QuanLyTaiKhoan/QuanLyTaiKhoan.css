@@ -44,6 +44,12 @@
   padding: 8px 16px;
   font-weight: 500;
   cursor: pointer;
+  transition: all 0.2s;
+}
+
+.add-account-btn:hover {
+  background-color: #0066cc;
+  color: white;
 }
 
 .add-icon {
@@ -220,58 +226,104 @@
   font-style: italic;
 }
 
-/* Add these styles for the create account modal */
+/* Form styles */
+.form {
+  margin: 0 auto;
+  max-width: 600px;
+  padding: 20px;
+}
 
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
+.form-row {
+  margin-bottom: 20px;
   display: flex;
-  justify-content: center;
   align-items: center;
-  z-index: 1000;
 }
 
-.create-account-modal {
-  background-color: #0066cc;
-  border-radius: 8px;
-  width: 850px; /* Increased from 700px */
-  max-width: 95vw;
-  padding: 40px; /* Increased from 30px */
+.form-row label {
+  width: 150px;
+  text-align: right;
+  margin-right: 15px;
   color: white;
-  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
-}
-
-.modal-title {
-  text-align: center;
-  font-size: 24px;
-  margin-bottom: 30px;
   font-weight: 500;
 }
 
-.account-type-selection {
-  display: flex;
-  justify-content: space-around;
-  margin-bottom: 40px;
+.form-row input,
+.form-row select {
+  flex: 1;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  background-color: white;
 }
 
-.account-type-option {
+.form-row input:focus,
+.form-row select:focus {
+  outline: 2px solid #80b3ff;
+}
+
+.form-row input[type="date"] {
+  flex: 1;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  background-color: white;
+  font-family: inherit;
+}
+
+.form-row input[type="date"]:focus {
+  outline: 2px solid #80b3ff;
+}
+
+.code-batch-row {
+  display: flex;
+  gap: 15px;
+}
+
+.code-batch-row .form-group {
+  flex: 1;
+  display: flex;
+  align-items: center;
+}
+
+.code-batch-row .form-group label {
+  width: 80px;
+  text-align: right;
+  margin-right: 15px;
+}
+
+.code-batch-row .form-group input,
+.code-batch-row .form-group select {
+  flex: 1;
+}
+
+/* Role selection styles */
+.role-selection {
+  display: flex;
+  justify-content: center;
+  gap: 30px;
+  padding: 40px 0;
+}
+
+.role-btn {
   display: flex;
   flex-direction: column;
   align-items: center;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  padding: 15px;
+  gap: 15px;
+  padding: 20px;
+  border: 2px solid white;
   border-radius: 8px;
+  background: transparent;
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-width: 150px;
 }
 
-.account-type-option:hover {
-  background-color: rgba(255, 255, 255, 0.1);
+.role-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
 }
-
 
 .account-type-icon {
   width: 80px;
@@ -298,6 +350,268 @@
   font-weight: 500;
 }
 
+/* Modal styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background-color: #0066cc;
+  border-radius: 8px;
+  width: 800px;
+  max-width: 95vw;
+  max-height: 90vh;
+  color: white;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-header {
+  padding: 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 500;
+}
+
+.modal-body {
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.modal-footer {
+  padding: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+  display: flex;
+  justify-content: flex-end;
+  gap: 15px;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 24px;
+  position: absolute;
+  right: 15px;
+  top: 12px;
+  cursor: pointer;
+  opacity: 0.8;
+  transition: opacity 0.2s;
+}
+
+.close-btn:hover {
+  opacity: 1;
+}
+
+.confirm-btn {
+  padding: 8px 20px;
+  border: none;
+  border-radius: 4px;
+  background-color: white;
+  color: #0066cc;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.confirm-btn:hover {
+  background-color: #f0f0f0;
+}
+
+.confirm-btn:disabled {
+  background-color: #cccccc;
+  color: #666666;
+  cursor: not-allowed;
+}
+
+.cancel-btn {
+  padding: 8px 20px;
+  border: 1px solid white;
+  border-radius: 4px;
+  background: transparent;
+  color: white;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.cancel-btn:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Ensure the add account button has the right styling */
+.add-account-btn {
+  display: flex;
+  align-items: center;
+  background-color: white;
+  color: #0066cc;
+  border: 1px solid #0066cc;
+  border-radius: 4px;
+  padding: 8px 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.add-account-btn:hover {
+  background-color: #0066cc;
+  color: white;
+}
+
+.add-icon {
+  font-size: 18px;
+  margin-right: 8px;
+}
+
+/* Add these styles for the account form */
+
+.account-form {
+  margin: 0 auto 30px;
+  max-width: 500px;
+}
+
+.form-row {
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+}
+
+.form-row label {
+  width: 150px;
+  text-align: right;
+  margin-right: 15px;
+  color: white;
+  font-weight: 500;
+}
+
+.form-row input,
+.form-row select {
+  flex: 1;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  background-color: white;
+}
+
+.form-row input:focus,
+.form-row select:focus {
+  outline: 2px solid #80b3ff;
+}
+
+.form-row input[type="date"] {
+  flex: 1;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  background-color: white;
+  font-family: inherit;
+}
+
+.form-row input[type="date"]:focus {
+  outline: 2px solid #80b3ff;
+}
+
+.code-batch-row {
+  display: flex;
+  gap: 15px;
+}
+
+.code-batch-row .form-group {
+  flex: 1;
+  display: flex;
+  align-items: center;
+}
+
+.code-batch-row .form-group label {
+  width: 80px;
+  text-align: right;
+  margin-right: 15px;
+}
+
+.code-batch-row .form-group input,
+.code-batch-row .form-group select {
+  flex: 1;
+}
+
+/* Code-batch input group styling */
+.input-with-dropdown {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  gap: 15px;
+}
+
+.code-input {
+  flex: 1;
+  padding: 8px 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px 0 0 4px;
+  font-size: 14px;
+}
+
+.batch-dropdown {
+  width: 100px;
+  padding: 0 10px;
+  border: 1px solid #ccc;
+  border-left: none;
+  border-radius: 0 4px 4px 0;
+  background-color: #f8f9fa;
+}
+
+/* Group row specific styling */
+.form-row.group-row {
+  margin-bottom: 16px;
+  height: 38px;
+}
+
+.input-with-label {
+  display: flex;
+  align-items: stretch;
+  flex: 1;
+  height: 33px;
+  gap: 20px;
+}
+
+.batch-label,
+.section-input {
+  flex: 1 1 0;
+  max-width: none;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+/* Student form specific field styles */
+.account-form.student-form select {
+  background: #fff;
+  border: none;
+  color: #222;
+  cursor: pointer;
+}
+
+.account-form.student-form select:focus {
+  outline: 2px solid #80b3ff;
+}
+
+/* Form action buttons */
 .modal-actions {
   margin-top: 20px;
   display: flex;
@@ -334,161 +648,166 @@
   background-color: rgba(255, 255, 255, 0.1);
 }
 
-/* Ensure the add account button has the right styling */
-.add-account-btn {
+/* Modal overlay and container */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
   display: flex;
-  align-items: center;
-  background-color: white;
-  color: #0066cc;
-  border: 1px solid #0066cc;
-  border-radius: 4px;
-  padding: 8px 16px;
-  font-weight: 500;
-  cursor: pointer;
-}
-
-.add-icon {
-  font-size: 18px;
-  margin-right: 8px;
-}
-
-/* Add these styles for the account form */
-
-.account-form {
-  margin: 0 auto 30px;
-  max-width: 500px;
-}
-
-.form-row {
-  margin-bottom: 20px; /* Increased from 15px */
-  display: flex;
-  align-items: center;
   justify-content: center;
+  align-items: center;
+  z-index: 1000;
 }
 
-.form-row label {
-  width: 120px;
-  text-align: right;
-  margin-right: 15px;
-  font-weight: 500;
+.create-account-modal {
+  background-color: #0066cc;
+  border-radius: 8px;
+  width: 850px;
+  max-width: 95vw;
+  padding: 40px;
   color: white;
-  flex-shrink: 0;
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
 }
 
-.form-row input {
-  flex: 0 1 240px; /* Changed from flex: 1 to flex: 0 1 240px */
-  max-width: 240px;
-  padding: 12px; /* Increased from 10px */
-  border: none;
-  border-radius: 4px;
-  font-size: 16px; /* Increased from 15px */
-}
-
-.form-row input:focus {
-  outline: 2px solid #80b3ff;
-}
-
-/* Add these styles for the student form */
-
-.student-form {
-  display: flex;
-  gap: 30px; /* Increased from 20px */
-}
-
-.form-column {
-  flex: 1;
-  min-width: 0;
-}
-
-.class-row {
-  display: flex;
-}
-
-/* Modify the class input fields to be narrower */
-.class-inputs {
-  display: flex;
-  gap: 10px;
-  flex: 1;
-  max-width: 240px; /* Match the width of other inputs */
-}
-
-.class-input {
-  flex: 1;
-  min-width: 0;
-  padding: 12px;
-  border: none;
-  border-radius: 4px;
-  font-size: 16px;
-}
-
-/* For the form row that contains the class fields specifically */
-.form-row.class-row {
-  justify-content: center; /* Align to the center */
-}
-
-/* Adjust the inputs following labels */
-.form-row label + input {
-  max-width: 240px; /* Limit width of inputs to be more balanced */
-}
-
-/* Matching styles for all inputs in the form */
-.form-row input, 
-.form-row .class-inputs input,
-.form-row select {
-  flex: 0 1 240px; /* Changed from flex: 1 to flex: 0 1 240px */
-  max-width: 240px;
-  padding: 12px;
-  border: none;
-  border-radius: 4px;
-  font-size: 16px;
-}
-
-.account-form.student-form.two-columns {
-  display: flex;
-  gap: 120px; /* Tăng khoảng cách giữa hai cột */
-  justify-content: center;
-  align-items: flex-start;
-}
-
-.account-form .form-col {
-  flex: 1;
-  min-width: 250px;
-}
-
-.account-form .form-row {
-  display: flex;
-  align-items: center;
-  margin-bottom: 16px;
-}
-
-.account-form .form-row label {
-  width: 120px;
-  text-align: right;
-  margin-right: 12px;
-  color: #fff;
+.modal-title {
+  text-align: center;
+  font-size: 24px;
+  margin-bottom: 30px;
   font-weight: 500;
 }
 
-.account-form .form-row input {
+/* View form styles */
+.view-form {
+  padding: 20px;
+}
+
+.view-form .form {
+  display: flex;
+  gap: 30px;
+}
+
+.view-form .single-col {
+  flex-direction: column;
+}
+
+.view-form .two-cols {
+  flex-direction: row;
+}
+
+.view-form .form-col {
   flex: 1;
-  padding: 7px 10px;
+}
+
+.view-form .form-row {
+  margin-bottom: 15px;
+  display: flex;
+  flex-direction: column;
+}
+
+.view-form .form-row label {
+  font-weight: 600;
+  color: #666;
+  margin-bottom: 5px;
+}
+
+.view-form .view-value {
+  color: #333;
+  padding: 8px;
+  background: #f5f5f5;
   border-radius: 4px;
-  border: none;
-  background: #fff;
-  color: #222;
+  min-height: 20px;
 }
 
-.account-form .form-row.group-row input {
-  flex: unset;
-  width: 48%;
-  min-width: 80px;
+/* Responsive Design */
+@media (max-width: 768px) {
+  .view-form .two-cols {
+    flex-direction: column;
+  }
+  
+  .view-form .form-col {
+    margin-bottom: 20px;
+  }
 }
 
-.account-form .form-row.group-row input + input {
-  margin-left: 10px;
+/* Role badges and selection */
+.admin-role {
+  color: #0066cc;
+  font-weight: 500;
 }
 
-/* Styling cho modal xác nhận xóa */
+.student-role {
+  color: #0066cc;
+  font-weight: 500;
+}
+
+.role-selection {
+  display: flex;
+  justify-content: center;
+  gap: 30px;
+  padding: 40px 0;
+}
+
+.role-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
+  padding: 20px;
+  border: 2px solid white;
+  border-radius: 8px;
+  background: transparent;
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-width: 150px;
+}
+
+.role-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.account-type-icon {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background-color: white;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 12px;
+  font-size: 36px;
+}
+
+.admin-icon {
+  color: #0066cc;
+}
+
+.student-icon {
+  color: #0066cc;
+}
+
+.account-type-label {
+  font-size: 18px;
+  font-weight: 500;
+}
+
+/* Confirmation modal */
+.confirmation-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1100; /* Higher than modal-overlay */
+}
+
 .confirmation-modal {
   background-color: #0069d9;
   color: white;
@@ -531,230 +850,118 @@
   border: 1px solid white;
 }
 
-/* View form styles */
-.view-form .form-row label {
-  color: #6c757d;
-  font-weight: 500;
-  min-width: 120px;
-}
-
-.view-form .form-row .view-value {
-  color: #212529;
-  font-weight: 600;
-  flex: 1;
-}
-
-.view-form .form-row {
-  display: flex;
-  margin-bottom: 15px;
-  align-items: center;
-}
-
-.view-form.account-form {
-  background-color: #f8f9fa;
+.alert-modal {
+  background-color: #0066cc;
+  color: #ffffff;
+  padding: 25px 35px;
   border-radius: 8px;
-  padding: 20px;
-  margin: 15px 0;
-}
-
-/* Role-specific styling */
-.admin-role-view {
-  color: #0d6efd;
-  font-weight: bold;
-}
-
-.student-role-view {
-  color: #198754;
-  font-weight: bold;
-}
-
-/* View modal form layout */
-.account-form.view-form {
-  background: transparent;
-  border-radius: 12px;
-  padding: 32px 32px 24px 32px;
-  margin: 0 auto 24px auto;
-  max-width: 700px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.account-form.view-form.single-col {
+  text-align: center;
   width: 400px;
-  margin: 0 auto;
+  max-width: 90vw;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
   display: flex;
   flex-direction: column;
   align-items: center;
-  background: transparent;
-  border-radius: 12px;
-  padding: 32px 32px 24px 32px;
 }
 
-.account-form.view-form.single-col .form-row {
-  width: 100%;
-  justify-content: center;
-  display: flex;
-  align-items: center;
-  margin-bottom: 16px;
-}
-
-.account-form.view-form.single-col .form-row label {
-  min-width: 120px;
-  color: rgba(255, 255, 255, 0.8); /* Màu trắng nhạt */
+.alert-title {
+  font-size: 20px;
   font-weight: 500;
-  text-align: right;
-  margin-right: 12px;
-  white-space: nowrap;
+  margin-bottom: 15px;
 }
 
-.account-form.view-form.single-col .form-row .view-value {
-  color: #ffffff; /* Màu trắng đậm */
-  font-weight: 600;
-  text-align: left;
-  flex: 1;
-  word-break: break-word;
+.alert-message {
+  font-size: 15px;
+  color: #f0f0f0;
+  margin-bottom: 25px;
+  line-height: 1.5;
 }
 
-.account-form.view-form.two-cols-centered {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  background: transparent; /* Bỏ background trắng */
-  border-radius: 12px;
-  padding: 32px 32px 24px 32px;
-  margin: 0 auto 24px auto;
-  max-width: 800px;
-  width: 100%;
-}
-
-.view-cols {
-  display: flex;
-  gap: 40px;
-  justify-content: space-between;
-  width: 100%;
-}
-
-.view-col {
-  width: calc(50% - 20px);
-  min-width: 0; /* Cho phép co lại khi cần */
-  max-width: calc(50% - 20px);
-}
-
-/* Đảm bảo form-row giữ nguyên trên một dòng */
-.account-form.view-form .form-row {
-  display: flex;
-  margin-bottom: 14px;
-  align-items: center;
-  flex-wrap: nowrap; /* Không cho phép xuống dòng */
-  overflow: hidden; /* Ẩn nội dung tràn */
-}
-
-.account-form.view-form .form-row label {
-  width: 120px;
-  min-width: 120px; /* Đảm bảo không co lại */
-  color: rgba(255, 255, 255, 0.8); /* Màu trắng nhạt */
+.alert-ok-btn {
+  padding: 8px 25px;
+  border: 1px solid #0066cc;
+  border-radius: 4px;
+  font-size: 15px;
   font-weight: 500;
-  text-align: right;
-  margin-right: 10px;
-  white-space: nowrap; /* Ngăn label xuống dòng */
+  cursor: pointer;
+  background-color: #ffffff;
+  color: #0066cc;
+  transition: background-color 0.2s, color 0.2s;
 }
 
-.account-form.view-form .view-value {
-  color: #ffffff; /* Màu trắng đậm */
-  font-weight: 600;
-  white-space: nowrap; /* Ngăn giá trị xuống dòng */
-  overflow: hidden;
-  text-overflow: ellipsis; /* Hiển thị dấu ... nếu quá dài */
+.alert-ok-btn:hover {
+  background-color: #f0f0f0;
+  color: #0056b3;
+}
+
+/* Validation error styles */
+.input-wrapper {
   flex: 1;
-  min-width: 0; /* Quan trọng để text-overflow hoạt động */
+  position: relative;
 }
 
-/* Đối với email và các giá trị dài khác */
-.account-form.view-form .form-row.email-row .view-value {
-  font-size: 14px; /* Giảm kích thước chữ cho email nếu cần */
+.input-wrapper input {
+  width: 100%;
 }
 
-@media (max-width: 900px) {
-  .account-form.view-form.two-cols-centered .view-cols {
-    flex-direction: column;
-    gap: 0;
-    align-items: stretch;
-  }
-  .view-col {
-    max-width: 100%;
-    min-width: 0;
-    margin-bottom: 16px;
-  }
+.input-wrapper input.error {
+  border: 1px solid #dc3545;
 }
 
-/* Add these styles for the input with dropdown */
+.error-message {
+  position: absolute;
+  font-size: 12px;
+  color: #dc3545;
+  margin-top: 4px;
+  margin-bottom: -16px;
+  width: 100%;
+}
 
-.input-with-dropdown {
+.form-row .input-wrapper {
+  position: relative;
+  flex: 1;
   display: flex;
-  align-items: center;
-  flex: 1;
-  gap: 15px;
+  flex-direction: column;
 }
 
-.code-input {
-  flex: 1;
-  padding: 8px 10px;
-  border: 1px solid #ccc;
-  border-radius: 4px 0 0 4px;
-  font-size: 14px;
+.form-row input.error,
+.form-row select.error {
+  border: 1px solid #dc3545;
 }
 
-.batch-dropdown {
-  width: 100px;
-  padding: 0 10px;
-  border: 1px solid #ccc;
-  border-left: none;
-  border-radius: 0 4px 4px 0;
-  background-color: #f8f9fa;
+.error-message {
+  color: #dc3545;
+  font-size: 12px;
+  margin-top: 4px;
+  margin-bottom: -16px;
 }
 
-.input-with-label {
-  display: flex;
-  align-items: stretch;
-  flex: 1;
-  height: 33px; /* Chiều cao cố định để đồng bộ với các trường khác */
+/* Add existing styles after this */
+
+.confirmation-modal {
+  width: 400px !important;
+  padding: 20px;
+  text-align: center;
+}
+
+.confirmation-modal .modal-body {
+  margin: 20px 0;
+}
+
+.confirmation-modal .modal-body p {
+  margin: 10px 0;
+}
+
+.confirmation-modal .modal-footer {
+  justify-content: center;
   gap: 20px;
 }
 
-.batch-label,
-.section-input {
-  flex: 1 1 0;
-  max-width: none;
-  min-width: 0;
-  box-sizing: border-box;
+.delete-btn {
+  background-color: #dc3545 !important;
+  color: white !important;
 }
 
-.batch-label {
-  min-width: 115px;
-  width: 115px;
-  padding: 8px 12px;
-  background-color: #f0f0f0;
-  border: 1px solid #ccc;
-  border-radius: 4px 0 0 4px;
-  font-size: 14px;
-  color: #555;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-sizing: border-box;
-}
-
-.section-input {
-  padding: 8px 10px;
-  border: 1px solid #ccc;
-  border-left: none;
-  border-radius: 0 4px 4px 0;
-  font-size: 14px;
-  height: 100%;
-}
-
-.form-row.group-row {
-  margin-bottom: 16px;
-  height: 38px; /* Đảm bảo chiều cao đồng nhất */
+.delete-btn:hover {
+  background-color: #c82333 !important;
 }

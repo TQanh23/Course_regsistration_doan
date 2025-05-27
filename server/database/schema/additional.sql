@@ -1,0 +1,15 @@
+USE dkhp;
+
+CREATE TABLE majors (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  code VARCHAR(50) NOT NULL UNIQUE,
+  name VARCHAR(255) NOT NULL,
+  department VARCHAR(255) NOT NULL
+);
+
+CREATE TABLE specializations (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  spe_code INT NOT NULL,
+  FOREIGN KEY (spe_code) REFERENCES majors(id)
+);

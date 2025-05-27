@@ -1,248 +1,140 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Menu, MenuItem, ListItemIcon, ListItemText, IconButton } from '@mui/material';
+import { FaSearch, FaSortAlphaDown, FaSortAlphaUp, FaUserCog, FaGraduationCap, FaEllipsisH } from 'react-icons/fa';
+import EditIcon from '@mui/icons-material/Edit';
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import DeleteIcon from '@mui/icons-material/Delete';
+import accountService, { Account, Role as AccountRole } from '../../services/accountService';
+import { useAuth } from '../../api/AuthContext';
 import './QuanLyTaiKhoan.css';
-import { FaSearch, FaEllipsisH, FaUserPlus, FaSortAlphaDown, FaSortAlphaUp, FaFilter, FaTimes, FaGraduationCap, FaUserCog } from 'react-icons/fa';
-import { 
-  IconButton, 
-  Menu, 
-  MenuItem, 
-  ListItemIcon, 
-  ListItemText 
-} from '@mui/material';
-import { 
-  Visibility as VisibilityIcon,
-  Edit as EditIcon,
-  Delete as DeleteIcon
-} from '@mui/icons-material';
 
-// Sample data to match what's in the image
-const initialAccounts = [
-  { 
-    id: 1, 
-    name: 'Lê Hải Anh', 
-    phone: '0384895040', 
-    email: '0120068@st.huce.edu.vn', 
-    code: '0120068', // Khóa 68
-    role: 'Sinh viên',
-    studentDetails: {
-      dob: '20/10/2004',
-      major: 'Khoa học máy tính',
-      specialization: 'Khoa học máy tính',
-      faculty: 'Công nghệ thông tin',
-      trainingType: 'Chính quy - CĐIO',
-      universitySystem: 'Đại học - B7',
-      classGroup: '68',
-      classSection: 'CS1'
-    }
-  },
-  { 
-    id: 2, 
-    name: 'Lê Văn Anh', 
-    phone: '0335244235', 
-    email: '0126468@st.huce.edu.vn', 
-    code: '0126467', // Khóa 67
-    role: 'Sinh viên',
-    studentDetails: {
-      dob: '15/04/2003',
-      major: 'Khoa học máy tính',
-      specialization: 'Khoa học máy tính',
-      faculty: 'Công nghệ thông tin',
-      trainingType: 'Chính quy - CĐIO',
-      universitySystem: 'Đại học - B7',
-      classGroup: '67',
-      classSection: 'CS2'
-    }
-  },
-  { 
-    id: 3, 
-    name: 'Trần Hải Anh', 
-    phone: '0944911333', 
-    email: 'thanhnh@st.huce.edu.vn', 
-    code: '2347249', 
-    role: 'Admin',
-    password: 'admin123'
-  },
-  { 
-    id: 4, 
-    name: 'Nguyễn Hoàng Mai Anh', 
-    phone: '0336194290', 
-    email: '0127068@st.huce.edu.vn', 
-    code: '0127066', // Khóa 66
-    role: 'Sinh viên',
-    studentDetails: {
-      dob: '05/06/2002',
-      major: 'Khoa học máy tính',
-      specialization: 'Khoa học máy tính',
-      faculty: 'Công nghệ thông tin',
-      trainingType: 'Chính quy - CĐIO',
-      universitySystem: 'Đại học - B7',
-      classGroup: '66',
-      classSection: 'CS3'
-    }
-  },
-  { 
-    id: 5, 
-    name: 'Nguyễn Việt Anh', 
-    phone: '0913209689', 
-    email: 'anhvn@huce.edu.vn', 
-    code: '764332', 
-    role: 'Admin',
-    password: 'admin456'
-  },
-  { 
-    id: 6, 
-    name: 'Hàn Thanh Cương', 
-    phone: '0918922564', 
-    email: '0130068@st.huce.edu.vn', 
-    code: '0130065', // Khóa 65
-    role: 'Sinh viên',
-    studentDetails: {
-      dob: '12/09/2001',
-      major: 'Kỹ thuật phần mềm',
-      specialization: 'Kỹ thuật phần mềm',
-      faculty: 'Công nghệ thông tin',
-      trainingType: 'Chính quy - CĐIO',
-      universitySystem: 'Đại học - B7',
-      classGroup: '65',
-      classSection: 'SE1'
-    }
-  },
-  { 
-    id: 7, 
-    name: 'Nguyễn Hải Cường', 
-    phone: '0977942963', 
-    email: '0174067@st.huce.edu.vn', 
-    code: '0174064', // Khóa 64
-    role: 'Sinh viên',
-    studentDetails: {
-      dob: '28/03/2000',
-      major: 'Hệ thống thông tin',
-      specialization: 'Hệ thống thông tin',
-      faculty: 'Công nghệ thông tin',
-      trainingType: 'Chính quy - CĐIO',
-      universitySystem: 'Đại học - B7',
-      classGroup: '64',
-      classSection: 'IS2'
-    }
-  },
-];
-
-// Define types
-type SearchFilter = 'name' | 'code' | 'phone';
+type ModalStep = 'select-role' | 'enter-details';
+type SearchFilter = 'name' | 'code' | 'email';
 type RoleFilter = 'all' | 'student' | 'admin';
-type AccountRole = 'Admin' | 'Sinh viên';
 type SortDirection = 'asc' | 'desc' | 'none';
+type Role = 'Student' | 'Admin';
 
-// Interface for student details
-interface StudentDetails {
+interface ValidationErrors {
+  name?: string;
+  email?: string;
+  code?: string;
+  phone?: string;
+  dob?: string;
+  major?: string;
+  classGroup?: string;
+  password?: string;
+  specialization?: string;
+  faculty?: string;
+  trainingType?: string;
+  universitySystem?: string;
+  classSection?: string;
+}
+
+interface FormData {
+  name: string;
+  phone: string;
+  email: string;
+  code: string;
+  role: AccountRole;
+  password?: string;
   dob: string;
   major: string;
   specialization: string;
   faculty: string;
   trainingType: string;
   universitySystem: string;
-  classGroup: string;
+  classGroup: string; 
   classSection: string;
 }
 
-// Interface for account
-interface Account {
-  id: number;
-  name: string;
-  phone: string;
-  email: string;
-  code: string;
-  role: string;
-  password?: string;
-  studentDetails?: StudentDetails;
-}
+const emptyFormData: FormData = {
+  name: '',
+  phone: '',
+  email: '',
+  code: '',
+  password: '',
+  dob: '',
+  role: 'Student' as AccountRole,
+  major: 'Công nghệ thông tin',
+  specialization: 'Khoa học máy tính',
+  faculty: 'Công nghệ thông tin',
+  trainingType: 'Chính quy - CĐIO',
+  universitySystem: 'Đại học - B7',
+  classGroup: '67',
+  classSection: 'CS2'
+};
 
-const QuanLyTaiKhoan: React.FC = () => {
-  // State variables
-  const [accounts, setAccounts] = useState<Account[]>(initialAccounts);
+export const QuanLyTaiKhoan = () => {
+  const { user: currentUser } = useAuth();
+  
+  // State variables  
+  const [accounts, setAccounts] = useState<Account[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [searchFilter, setSearchFilter] = useState<SearchFilter>('name');
-  const [sortDirection, setSortDirection] = useState<SortDirection>('none');
   const [roleFilter, setRoleFilter] = useState<RoleFilter>('all');
-  
-  // Modal states
+  const [sortDirection, setSortDirection] = useState<SortDirection>('none');
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
+  const [showAlertModal, setShowAlertModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showEditConfirm, setShowEditConfirm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  
-  // Selected items states
-  const [selectedRole, setSelectedRole] = useState<AccountRole>('Sinh viên');
-  const [modalStep, setModalStep] = useState<'select-role' | 'enter-details'>('select-role');
+  const [selectedRole, setSelectedRole] = useState<AccountRole>('Student');
+  const [viewRole, setViewRole] = useState<AccountRole>('Student');
+  const [modalStep, setModalStep] = useState<ModalStep>('select-role');
+  const [formData, setFormData] = useState<FormData>(emptyFormData);
+  const [editedData, setEditedData] = useState<FormData>(emptyFormData);
+  const [viewAccountData, setViewAccountData] = useState<{
+    name: string;
+    dob: string;
+    email: string;
+    phone: string;
+    code: string;
+    role: AccountRole;
+    major: string;
+    specialization: string;
+    faculty: string;
+    trainingType: string;
+    universitySystem: string;
+    classGroup: string;
+    classSection: string;
+  }>({...emptyFormData, role: 'Student' as AccountRole});
+  const [selectedBatch, setSelectedBatch] = useState('67');
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-  const [selectedAccountId, setSelectedAccountId] = useState<number | null>(null);
-  const [accountIdToDelete, setAccountIdToDelete] = useState<number | null>(null);
   const [editingAccountId, setEditingAccountId] = useState<number | null>(null);
-  const [editRole, setEditRole] = useState<AccountRole>('Sinh viên');
-  
-  // Form data states
-  const [formData, setFormData] = useState({
-    name: '',
-    dob: '',
-    email: '',
-    phone: '',
-    code: '',
-    password: '',
-    major: '',
-    specialization: '',
-    faculty: '',
-    trainingType: '',
-    universitySystem: '',
-    classGroup: '',
-    classSection: ''
-  });
-  const [viewRole, setViewRole] = useState<AccountRole>('Sinh viên');
-  const [viewAccountData, setViewAccountData] = useState({
-    name: '',
-    dob: '',
-    email: '',
-    phone: '',
-    code: '',
-    password: '',
-    major: '',
-    specialization: '',
-    faculty: '',
-    trainingType: '',
-    universitySystem: '',
-    classGroup: '',
-    classSection: ''
-  });
+  const [alertTitle, setAlertTitle] = useState('');
+  const [alertMessage, setAlertMessage] = useState('');
+  const [validationErrors, setValidationErrors] = useState<ValidationErrors>({});
 
-  // Thêm vào phần trên của component
-  const [selectedBatch, setSelectedBatch] = useState('67'); // Khóa mặc định là 67
-  const [editSelectedBatch, setEditSelectedBatch] = useState('67');
+  // Fetch accounts on component mount
+  useEffect(() => {
+    const fetchAccounts = async () => {
+      try {
+        const result = await accountService.getAllAccounts();
+        if (result.success) {
+          setAccounts(result.data || []);
+        } else {
+          console.error('Error fetching accounts:', result.error);
+        }
+      } catch (error) {
+        console.error('Error fetching accounts:', error);
+      }
+    };
+    fetchAccounts();
+  }, []);
 
-  // Add this validation function after your state declarations
-  const validateForm = (data: any, role: string) => {
-    // Name validation - cannot be empty
-    if (!data.name.trim()) return false;
-    
-    // Email validation - must be valid format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(data.email)) return false;
-    
-    // Code validation - different rules based on role
-    if (role === 'Sinh viên') {
-      // For students: input portion (excluding batch) must be 2-5 digits
-      const codeBase = data.code.replace(/\d{2}$/, '');
-      if (!/^\d{2,5}$/.test(codeBase)) return false;
-    } else {
-      // For admins: code must be 5-6 digits
-      if (!/^\d{5,7}$/.test(data.code)) return false;
-    }
-    
-    // Password validation - must be at least 6 characters
-    if (data.password.length < 6) return false;
-    
-    return true;
+  // Event handlers
+  const handleMenuOpen = (event: React.MouseEvent<HTMLButtonElement>, accountId: number) => {
+    setAnchorEl(event.currentTarget);
+    setEditingAccountId(accountId);
   };
 
-  // Existing handlers
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+    // setEditingAccountId(null);
+  };
+
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
   };
@@ -250,838 +142,558 @@ const QuanLyTaiKhoan: React.FC = () => {
   const handleFilterChange = (filter: SearchFilter) => {
     setSearchFilter(filter);
   };
-  
+
+  const handleRoleFilter = (filter: RoleFilter) => {
+    setRoleFilter(filter);
+  };
+
+  const handleBatchChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const batchValue = e.target.value;
+    setSelectedBatch(batchValue);
+    
+    const currentCode = formData.code.replace(/\d{2}$/, '');
+    setFormData(prevFormData => ({
+      ...prevFormData,
+      code: currentCode + batchValue,
+      classGroup: batchValue
+    }));
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    if (name) {
+      setFormData(prevFormData => ({
+        ...prevFormData,
+        [name]: value
+      }));
+    }
+  };
+
+  const handleEditInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    if (name) {
+      setEditedData(prevData => ({
+        ...prevData,
+        [name]: value
+      }));
+    }
+  };
+
+  const handleRoleSelect = (role: Role) => {
+    setSelectedRole(role);
+    setModalStep('enter-details');
+  };
+
   const toggleSort = () => {
-    if (sortDirection === 'none') setSortDirection('asc');
-    else if (sortDirection === 'asc') setSortDirection('desc');
-    else setSortDirection('none');
+    setSortDirection(prev => {
+      if (prev === 'none') return 'asc';
+      if (prev === 'asc') return 'desc';
+      return 'none';
+    });
   };
-  
-  const handleRoleFilter = (role: RoleFilter) => {
-    setRoleFilter(role);
+
+  // Validation function
+  const validateForm = (): boolean => {
+const handleUpdateAccount = async () => {
+  if (!editingAccountId || isNaN(Number(editingAccountId))) {
+    handleShowAlert('Lỗi', 'ID tài khoản không hợp lệ');
+    return;
+  }
+  // ... rest of the code
+};    const newErrors: ValidationErrors = {};
+    const dataToValidate = showEditModal ? editedData : formData;
+    const role = showEditModal ? viewRole : selectedRole;
+
+    // Validate required fields
+    if (!dataToValidate.name?.trim()) {
+      newErrors.name = 'Vui lòng nhập họ tên';
+    }
+    if (!dataToValidate.phone?.trim()) {
+      newErrors.phone = 'Vui lòng nhập số điện thoại';
+    }
+    if (!dataToValidate.email?.trim()) {
+      newErrors.email = 'Vui lòng nhập email';
+    } else {
+      const emailPattern = role === 'Admin' ? /^[^\s@]+@huce\.edu\.vn$/ : /^[^\s@]+@st\.huce\.edu\.vn$/;
+      if (!emailPattern.test(dataToValidate.email)) {
+        newErrors.email = role === 'Admin' ? 'Email phải kết thúc bằng @huce.edu.vn' : 'Email phải kết thúc bằng @st.huce.edu.vn';
+      }
+    }
+    if (!dataToValidate.code?.trim()) {
+      newErrors.code = 'Vui lòng nhập mã số';
+    } else {
+      const codeRegex = role === 'Admin' ? /^\d{5,7}$/ : /^\d{2,5}\d{2}$/;
+      if (!codeRegex.test(dataToValidate.code)) {
+        newErrors.code = role === 'Admin' ? 'Mã số phải có 5-7 chữ số' : 'Mã số phải có 2-5 chữ số + 2 số cuối của khóa';
+      }
+    }
+
+    // Validate password only for new accounts or when changing password
+    if (!showEditModal || dataToValidate.password?.trim()) {
+      if (!dataToValidate.password || dataToValidate.password.length < 8) {
+        newErrors.password = 'Mật khẩu phải có ít nhất 8 kí tự';
+      }
+    }
+
+    // Additional validation for students
+    if (role === 'Student') {
+      if (!dataToValidate.dob?.trim()) {
+        newErrors.dob = 'Vui lòng nhập ngày sinh';
+      } else {
+        const dobRegex = /^(0[1-9]|[12][0-9]|3[01])\/(0[1-9]|1[0-2])\/\d{4}$/;
+        if (!dobRegex.test(dataToValidate.dob)) {
+          newErrors.dob = 'Ngày sinh không hợp lệ (DD/MM/YYYY)';
+        }
+      }
+      if (!dataToValidate.major?.trim()) {
+        newErrors.major = 'Vui lòng nhập ngành học';
+      }
+      if (!dataToValidate.classGroup?.trim()) {
+        newErrors.classGroup = 'Vui lòng chọn khóa';
+      }
+    }
+
+    setValidationErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
-  
-  // Modal handlers
-  const openCreateModal = () => {
-    setSelectedRole('Sinh viên'); // Default role
-    setModalStep('select-role');
-    // Reset form data
-    setFormData({
+
+  const validateField = (field: string, value: string | undefined): string | undefined => {
+    if (!value) return undefined;
+
+    switch (field) {
+      case 'email':
+        const emailPattern = viewRole === 'Admin'
+          ? /^[^\s@]+@huce\.edu\.vn$/
+          : /^[^\s@]+@st\.huce\.edu\.vn$/;
+        if (!emailPattern.test(value)) {
+          return viewRole === 'Admin'
+            ? 'Email phải kết thúc bằng @huce.edu.vn'
+            : 'Email phải kết thúc bằng @st.huce.edu.vn';
+        }
+        break;
+
+      case 'password':
+        if (value.length < 8) {
+          return 'Mật khẩu phải có ít nhất 8 kí tự';
+        }
+        break;
+
+      case 'code':
+        const codeRegex = viewRole === 'Admin' ? /^\d{5,7}$/ : /^\d{2,5}\d{2}$/;
+        if (!codeRegex.test(value)) {
+          return viewRole === 'Admin'
+            ? 'Mã số phải có 5-7 chữ số'
+            : 'Mã số phải có 2-5 chữ số + 2 số cuối của khóa';
+        }
+        break;
+
+      case 'dob':
+        const dobRegex = /^(0[1-9]|[12][0-9]|3[01])\/(0[1-9]|1[0-2])\/\d{4}$/;
+        if (!dobRegex.test(value)) {
+          return 'Ngày sinh không hợp lệ (DD/MM/YYYY)';
+        }
+        break;
+    }
+    return undefined;
+  };
+
+  const handleShowAlert = (title: string, message: string) => {
+    setAlertTitle(title);
+    setAlertMessage(message);
+    setShowAlertModal(true);
+  };
+
+  const handleCreateAccount = async () => {
+    if (!validateForm()) {
+      handleShowAlert('Lỗi', 'Vui lòng điền đầy đủ thông tin và sửa các lỗi trong form');
+      return;
+    }
+
+    try {
+      const result = await accountService.createAccount({
+        ...formData,
+        role: selectedRole
+      });
+
+      if (result.success && result.data) {
+        setAccounts(prev => [...prev, result.data as Account]);
+        handleShowAlert('Thành công', 'Tạo tài khoản mới thành công');
+        setShowCreateModal(false);
+      } else {
+        handleShowAlert('Lỗi', result.error || 'Có lỗi xảy ra khi tạo tài khoản');
+      }
+    } catch (error: any) {
+      handleShowAlert('Lỗi', error.message || 'Có lỗi xảy ra khi tạo tài khoản');
+    }
+  };
+
+  const handleEditAccount = () => {
+    if (!editingAccountId || typeof editingAccountId !== 'number') {
+      handleShowAlert('Lỗi', 'ID tài khoản không hợp lệ');
+      return;
+    }
+
+    // Kiểm tra xem tài khoản có tồn tại không
+    const accountToUpdate = accounts.find(acc => acc.id === editingAccountId);
+    if (!accountToUpdate) {
+      handleShowAlert('Lỗi', 'Không tìm thấy thông tin tài khoản');
+      return;
+    }
+    
+    const account = accounts.find(acc => acc.id === editingAccountId);
+    if (!account) {
+      handleShowAlert('Lỗi', 'Không tìm thấy thông tin tài khoản');
+      return;
+    }
+
+    // Khởi tạo dữ liệu chỉnh sửa từ tài khoản hiện tại
+    const editData: FormData = {
+      name: account.name || '',
+      email: account.email || '',
+      phone: account.phone || '',
+      code: account.code || '',
+      role: account.role,
+      password: '', // Để trống vì không cần cập nhật mật khẩu mỗi lần
+      dob: account.studentDetails?.dob || '',
+      major: account.studentDetails?.major || 'Công nghệ thông tin',
+      specialization: account.studentDetails?.specialization || 'Khoa học máy tính',
+      faculty: account.studentDetails?.faculty || 'Công nghệ thông tin',
+      trainingType: account.studentDetails?.trainingType || 'Chính quy - CĐIO',
+      universitySystem: account.studentDetails?.universitySystem || 'Đại học - B7',
+      classGroup: account.studentDetails?.classGroup || '67',
+      classSection: account.studentDetails?.classSection || 'CS2'
+    };
+
+    // Cập nhật state
+    setViewRole(account.role);
+    setEditedData(editData);
+    setShowEditModal(true);
+    handleMenuClose();
+  };
+
+  const handleViewAccount = () => {
+    if (!editingAccountId) return;
+    
+    const accountToView = accounts.find(acc => acc.id === editingAccountId);
+    if (!accountToView) return;
+
+    // Set view data
+    setViewAccountData({
+      ...viewAccountData,
+      name: accountToView.name,
+      email: accountToView.email,
+      phone: accountToView.phone,
+      code: accountToView.code,
+      role: accountToView.role,
+      // Add student specific fields if role is Student
+      ...(accountToView.role === 'Student' && {
+        major: 'Công nghệ thông tin',
+        specialization: 'Khoa học máy tính',
+        faculty: 'Công nghệ thông tin',
+        trainingType: 'Chính quy - CĐIO',
+        universitySystem: 'Đại học - B7',
+        classGroup: '67',
+        classSection: 'CS2',
+      })
+    });
+
+    setShowViewModal(true);
+    // Don't close menu here - let it stay open
+  };
+
+  const handleUpdateAccount = async () => {
+    if (!validateForm()) {
+      handleShowAlert('Lỗi', 'Vui lòng điền đầy đủ thông tin và sửa các lỗi trong form');
+      return;
+    }
+
+    if (!editingAccountId || typeof editingAccountId !== 'number') {
+      handleShowAlert('Lỗi', 'ID tài khoản không hợp lệ');
+      return;
+    }
+
+    // Kiểm tra xem tài khoản có tồn tại không
+    const accountToUpdate = accounts.find(acc => acc.id === editingAccountId);
+    if (!accountToUpdate) {
+      handleShowAlert('Lỗi', 'Không tìm thấy thông tin tài khoản');
+      return;
+    }
+
+    try {
+      // Chuẩn bị dữ liệu cập nhật
+      const updateData = {
+        name: editedData.name,
+        email: editedData.email,
+        phone: editedData.phone,
+        code: editedData.code,
+        role: viewRole,
+        ...(editedData.password ? { password: editedData.password } : {}),
+        ...(viewRole === 'Student' ? {
+          studentDetails: {
+            dob: editedData.dob || '',
+            major: editedData.major || 'Công nghệ thông tin',
+            specialization: editedData.specialization || 'Khoa học máy tính',
+            faculty: editedData.faculty || 'Công nghệ thông tin',
+            trainingType: editedData.trainingType || 'Chính quy - CĐIO',
+            universitySystem: editedData.universitySystem || 'Đại học - B7',
+            classGroup: editedData.classGroup || '67',
+            classSection: editedData.classSection || 'CS2'
+          }
+        } : {})
+      };
+
+      console.log('Sending update data:', updateData);
+      const result = await accountService.updateAccount(editingAccountId, updateData);
+      console.log('Update result:', result);
+
+      if (result.success) {
+        // Cập nhật state accounts với dữ liệu mới
+        setAccounts(prev => prev.map(acc => 
+          acc.id === editingAccountId ? { ...acc, ...result.data } : acc
+        ));
+        handleShowAlert('Thành công', 'Cập nhật tài khoản thành công');
+        handleCloseEditModal();
+      } else {
+        handleShowAlert('Lỗi', result.error || 'Có lỗi xảy ra khi cập nhật tài khoản');
+      }
+    } catch (error: any) {
+      console.error('Lỗi cập nhật tài khoản:', error);
+      handleShowAlert('Lỗi', error.message || 'Có lỗi xảy ra khi cập nhật tài khoản');
+    }
+  };
+
+  const handleCloseEditModal = () => {
+    setShowEditModal(false);
+    setEditedData(emptyFormData);
+    setEditingAccountId(null);
+    setValidationErrors({});
+    handleMenuClose();
+  };
+
+  const handleCloseViewModal = () => {
+    setShowViewModal(false);
+    setViewAccountData({
       name: '',
       dob: '',
       email: '',
       phone: '',
       code: '',
-      password: '',
+      role: 'Student' as AccountRole,
       major: '',
       specialization: '',
       faculty: '',
       trainingType: '',
       universitySystem: '',
       classGroup: '',
-      classSection: ''
+      classSection: '',
     });
-    setShowCreateModal(true);
-  };
-  
-  const handleCloseModal = () => {
-    setShowCreateModal(false);
-  };
-  
-  const handleRoleSelect = (role: AccountRole) => {
-    setSelectedRole(role);
-    
-    // Set example data based on role for demonstration
-    if (role === 'Admin') {
-      setFormData({
-        name: 'Trần Việt Phương',
-        dob: '15/06/1998',
-        email: 'phuongtv@huce.edu.vn',
-        phone: '0944 911 333',
-        code: '325435',
-        password: 'D@f+PY{3',
-        major: '',
-        specialization: '',
-        faculty: '',
-        trainingType: '',
-        universitySystem: '',
-        classGroup: '',
-        classSection: ''
-      });
-    } else {
-      // Example student data
-      setFormData({
-        name: 'Trần Phạm Nhật Quân',
-        dob: '20/10/2004',
-        email: '0305067@st.huce.edu.vn',
-        phone: '0979836562',
-        code: '03067',
-        password: 'D@f+PY{3',
-        major: 'Khoa học máy tính',
-        specialization: 'Khoa học máy tính',
-        faculty: 'Công nghệ thông tin',
-        trainingType: 'Chính quy - CĐIO',
-        universitySystem: 'Đại học - B7',
-        classGroup: 'Khóa 67',
-        classSection: 'CS2'
-      });
-    }
-    
-    setModalStep('enter-details');
-  };
-  
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
-  
-  const handleCreateAccount = () => {
-
-    // Tạo account mới với đầy đủ thông tin
-    const newAccount: Account = {
-      id: accounts.length + 1,
-      name: formData.name,
-      phone: formData.phone,
-      email: formData.email,
-      code: formData.code,
-      role: selectedRole,
-      password: formData.password,
-      studentDetails: selectedRole === 'Sinh viên' ? {
-        dob: formData.dob,
-        major: formData.major,
-        specialization: formData.specialization,
-        faculty: formData.faculty,
-        trainingType: formData.trainingType,
-        universitySystem: formData.universitySystem,
-        classGroup: formData.classGroup,
-        classSection: formData.classSection,
-      } : undefined
-    };
-  
-    setAccounts([...accounts, newAccount]);
-    setShowCreateModal(false);
-  };
-  
-  // Back to role selection
-  const handleBackToRoleSelect = () => {
-    setModalStep('select-role');
-  };
-
-  // Add these handlers for the dropdown menu
-  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>, accountId: number) => {
-    setAnchorEl(event.currentTarget);
-    setSelectedAccountId(accountId);
-  };
-
-  const handleMenuClose = () => {
-    setAnchorEl(null);
-    setSelectedAccountId(null);
-  };
-
-  const handleViewAccount = () => {
-    // Lấy thông tin tài khoản cần xem
-    const accountToView = accounts.find(account => account.id === selectedAccountId);
-    if (accountToView) {
-      // Xác định role của tài khoản
-      const role = accountToView.role as AccountRole;
-      setViewRole(role);
-      
-      // Lấy thông tin chi tiết đã lưu (nếu có) hoặc dùng dữ liệu mẫu
-      const studentDetails: StudentDetails = accountToView.studentDetails || {
-        dob: '',
-        major: '',
-        specialization: '',
-        faculty: '',
-        trainingType: '',
-        universitySystem: '',
-        classGroup: '',
-        classSection: ''
-      };
-      
-      // Điền dữ liệu có sẵn vào form xem
-      setViewAccountData({
-        name: accountToView.name,
-        dob: studentDetails.dob || (role === 'Admin' ? '15/06/1998' : '20/10/2004'),
-        email: accountToView.email,
-        phone: accountToView.phone,
-        code: accountToView.code,
-        password: '********',
-        major: studentDetails.major || (role === 'Sinh viên' ? 'Khoa học máy tính' : ''),
-        specialization: studentDetails.specialization || (role === 'Sinh viên' ? 'Khoa học máy tính' : ''),
-        faculty: studentDetails.faculty || (role === 'Sinh viên' ? 'Công nghệ thông tin' : ''),
-        trainingType: studentDetails.trainingType || (role === 'Sinh viên' ? 'Chính quy - CĐIO' : ''),
-        universitySystem: studentDetails.universitySystem || (role === 'Sinh viên' ? 'Đại học - B7' : ''),
-        classGroup: studentDetails.classGroup || (role === 'Sinh viên' ? '67' : ''),
-        classSection: studentDetails.classSection || (role === 'Sinh viên' ? 'CS2' : '')
-      });
-      setShowViewModal(true);
-    }
+    setEditingAccountId(null);
     handleMenuClose();
   };
 
-  // Add this function to close view modal
-  const handleCloseViewModal = () => {
-    setShowViewModal(false);
-  };
+  const handleDeleteAccount = async () => {
+    if (!editingAccountId) {
+      console.log('No account ID selected for deletion');
+      return;
+    }
 
-  // Define editFormData state
-  const [editFormData, setEditFormData] = useState({
-    name: '',
-    dob: '',
-    email: '',
-    phone: '',
-    code: '',
-    password: '',
-    major: '',
-    specialization: '',
-    faculty: '',
-    trainingType: '',
-    universitySystem: '',
-    classGroup: '',
-    classSection: ''
-  });
-
-  // Thêm state để lưu trữ dữ liệu gốc khi mở form chỉnh sửa
-  const [originalEditData, setOriginalEditData] = useState({
-    name: '',
-    dob: '',
-    email: '',
-    phone: '',
-    code: '',
-    password: '',
-    major: '',
-    specialization: '',
-    faculty: '',
-    trainingType: '',
-    universitySystem: '',
-    classGroup: '',
-    classSection: ''
-  });
-
-  // Sửa lại hàm handleEditAccount để lưu dữ liệu gốc
-  const handleEditAccount = () => {
-    const accountToEdit = accounts.find(account => account.id === selectedAccountId);
-    if (accountToEdit) {
-      setEditingAccountId(selectedAccountId);
-  
-      const role = accountToEdit.role as AccountRole;
-      setEditRole(role);
-  
-      // Define the empty fallback object with the correct type
-      const studentDetails: StudentDetails = accountToEdit.studentDetails || {
-        dob: '',
-        major: '',
-        specialization: '',
-        faculty: '',
-        trainingType: '',
-        universitySystem: '',
-        classGroup: '',
-        classSection: ''
-      };
+    try {
+      console.log('Starting account deletion process for ID:', accounts);
       
-      // Trích xuất khóa từ mã số hoặc lớp (nếu có)
-      let batch = '67'; // Mặc định
-      if (accountToEdit.code.match(/\d{2}$/)) {
-        batch = accountToEdit.code.slice(-2);
-      } else if (studentDetails.classGroup?.match(/\d{2}/)) {
-        batch = studentDetails.classGroup.match(/\d{2}/)![0];
+      const account = accounts.find(acc => acc.id === editingAccountId);
+      const isSelf = account?.id === currentUser?.id;
+
+      console.log('Account to delete:', account);
+      console.log('Is deleting own account:', isSelf);
+
+      // Prevent deleting own account
+      if (isSelf) {
+        console.log('Preventing self-deletion');
+        handleShowAlert('Lỗi', 'Không thể xóa tài khoản đang đăng nhập');
+        setShowDeleteConfirm(false);
+        setEditingAccountId(null);
+        return;
       }
-      
-      setEditSelectedBatch(batch);
-  
-      // Set edit form data
-      const newEditFormData = {
-        name: accountToEdit.name,
-        dob: studentDetails.dob || (role === 'Admin' ? '15/06/1998' : '20/10/2004'),
-        email: accountToEdit.email,
-        phone: accountToEdit.phone,
-        code: accountToEdit.code,
-        password: accountToEdit.password || '', 
-        major: studentDetails.major || (role === 'Sinh viên' ? 'Khoa học máy tính' : ''),
-        specialization: studentDetails.specialization || (role === 'Sinh viên' ? 'Khoa học máy tính' : ''),
-        faculty: studentDetails.faculty || (role === 'Sinh viên' ? 'Công nghệ thông tin' : ''),
-        trainingType: studentDetails.trainingType || (role === 'Sinh viên' ? 'Chính quy - CĐIO' : ''),
-        universitySystem: studentDetails.universitySystem || (role === 'Sinh viên' ? 'Đại học - B7' : ''),
-        classGroup: studentDetails.classGroup || (role === 'Sinh viên' ? 'Khóa 67' : ''),
-        classSection: studentDetails.classSection || (role === 'Sinh viên' ? 'CS2' : '')
-      };
-  
-      setEditFormData(newEditFormData);
-      // Lưu trữ dữ liệu gốc để so sánh sau này
-      setOriginalEditData({...newEditFormData});
-  
-      setShowEditModal(true);
-    }
-    handleMenuClose();
-  };
 
-  // Sửa lại button xác nhận trong modal chỉnh sửa
-  // Thay thế button xác nhận hiện tại bằng:
-  <button 
-    className="confirm-btn" 
-    onClick={() => {
-      // Kiểm tra xem có sự thay đổi không
-      const hasChanges = JSON.stringify(editFormData) !== JSON.stringify(originalEditData);
-      
-      if (hasChanges) {
-        // Nếu có thay đổi, hiện modal xác nhận
-        setShowEditConfirm(true);
+      if (!account) {
+        console.log('Account not found');
+        handleShowAlert('Lỗi', 'Không tìm thấy tài khoản');
+        return;
+      }
+
+      console.log('Calling accountService.deleteAccount...');
+      const result = await accountService.deleteAccount(editingAccountId, account.role);
+      console.log('Delete result:', result);
+
+      if (result.success) {
+        console.log('Delete successful, updating UI');
+        setAccounts(prev => prev.filter(acc => acc.id !== editingAccountId));
+        handleShowAlert('Thành công', result.message || 'Xóa tài khoản thành công');
       } else {
-        // Nếu không có thay đổi, xác nhận luôn
-        handleSaveEdit();
+        console.log('Delete failed:', result.error);
+        // Display specific error message from server
+        handleShowAlert('Lỗi', result.error || 'Có lỗi xảy ra khi xóa tài khoản');
       }
-    }}
-    disabled={!validateForm(editFormData, editRole)}
-  >
-    Xác nhận
-  </button>
-
-  // Sửa lại hàm handleDeleteAccount
-  const handleDeleteAccount = () => {
-    // Lưu ID tài khoản vào state riêng trước khi đóng menu
-    setAccountIdToDelete(selectedAccountId);
-    setShowDeleteConfirm(true);
-    handleMenuClose();
-  };
-
-  // Thêm hàm xử lý khi xác nhận xóa
-  const confirmDelete = () => {
-    if (accountIdToDelete) {
-      // Lọc ra tài khoản cần xóa
-      const updatedAccounts = accounts
-        .filter(account => account.id !== accountIdToDelete)
-        // Cập nhật lại ID cho tất cả các tài khoản còn lại
-        .map((account, index) => ({
-          ...account,
-          id: index + 1 // ID mới bắt đầu từ 1
-        }));
-      
-      // Cập nhật state với mảng tài khoản đã xóa và đánh số lại
-      setAccounts(updatedAccounts);
+    } catch (error: any) {
+      console.error('Exception during delete:', error);
+      handleShowAlert('Lỗi', error.message || 'Có lỗi xảy ra khi xóa tài khoản');
     }
-    
-    // Reset state và đóng modal
+
     setShowDeleteConfirm(false);
-    setAccountIdToDelete(null);
-  };
-
-  // Sửa lại hàm cancelDelete
-  const cancelDelete = () => {
-    setShowDeleteConfirm(false);
-    setAccountIdToDelete(null);
-  };
-
-  // Hàm xử lý khi thay đổi input trong form chỉnh sửa
-  const handleEditInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setEditFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
-
-  // Modify the handleSaveEdit function to use editingAccountId
-  const handleSaveEdit = () => {
-
-    setAccounts(accounts.map(account =>
-      account.id === editingAccountId
-        ? {
-            ...account,
-            name: editFormData.name,
-            phone: editFormData.phone,
-            email: editFormData.email,
-            code: editFormData.code,
-            password: editFormData.password || account.password || '', // Lưu mật khẩu mới (nếu có)
-            studentDetails: {
-              dob: editFormData.dob,
-              major: editFormData.major,
-              specialization: editFormData.specialization,
-              faculty: editFormData.faculty,
-              trainingType: editFormData.trainingType,
-              universitySystem: editFormData.universitySystem,
-              classGroup: editFormData.classGroup,
-              classSection: editFormData.classSection,
-            }
-          }
-        : account
-    ));
-
-    setShowEditModal(false);
     setEditingAccountId(null);
   };
 
-  // Hàm đóng modal chỉnh sửa
-  const handleCloseEditModal = () => {
-    setShowEditModal(false);
+  const handleConfirmDelete = () => {
+    setShowDeleteConfirm(true);
+    handleMenuClose(); // Close menu when showing delete confirmation
   };
 
-  // Thêm hàm xử lý khi khóa thay đổi
-  const handleBatchChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const batchValue = e.target.value;
-    setSelectedBatch(batchValue);
-    
-    // Cập nhật mã số: thêm 2 số cuối từ khóa
-    const currentCode = formData.code.replace(/\d{2}$/, '');
-    setFormData(prev => ({
-      ...prev,
-      code: currentCode + batchValue,
-      classGroup: batchValue // Chỉ lưu số khóa, không lưu "Khóa XX"
-    }));
-  };
+  // Filtered and sorted accounts
+  const displayedAccounts = accounts
+    .filter(account => {
+      const searchLower = searchTerm.toLowerCase();
+      const matchesSearch = searchFilter === 'name' ? (account.name || '').toLowerCase().includes(searchLower)
+        : searchFilter === 'code' ? (account.code || '').toLowerCase().includes(searchLower)
+        : (account.email || '').toLowerCase().includes(searchLower);
 
-  // Hàm xử lý khi khóa thay đổi trong modal chỉnh sửa
-  const handleEditBatchChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const batchValue = e.target.value;
-    setEditSelectedBatch(batchValue);
-    
-    // Cập nhật mã số: thêm 2 số cuối từ khóa
-    const currentCode = editFormData.code.replace(/\d{2}$/, '');
-    setEditFormData(prev => ({
-      ...prev,
-      code: currentCode + batchValue,
-      classGroup: batchValue // Bỏ "Khóa " và chỉ lưu số khóa
-    }));
-  };
+      const matchesRole = roleFilter === 'all'
+        || (roleFilter === 'student' && account.role === 'Student')
+        || (roleFilter === 'admin' && account.role === 'Admin');
 
-  // Thêm state để điều khiển modal xác nhận tạo tài khoản
-  const [showCreateConfirm, setShowCreateConfirm] = useState(false);
-
-  // Thêm state để điều khiển modal xác nhận chỉnh sửa tài khoản
-  const [showEditConfirm, setShowEditConfirm] = useState(false);
-
-  // Filtering accounts
-  let displayedAccounts = accounts.filter(account => {
-    // Apply search filter
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase();
-      switch(searchFilter) {
-        case 'name':
-          if (!account.name.toLowerCase().includes(term)) return false;
-          break;
-        case 'code':
-          if (!account.code.toLowerCase().includes(term)) return false;
-          break;
-        case 'phone':
-          if (!account.phone.toLowerCase().includes(term)) return false;
-          break;
-      }
-    }
-    
-    // Apply role filter
-    if (roleFilter === 'student' && account.role !== 'Sinh viên') return false;
-    if (roleFilter === 'admin' && account.role !== 'Admin') return false;
-    
-    return true;
-  });
-  
-  // Apply sorting if needed
-  if (sortDirection !== 'none') {
-    displayedAccounts = [...displayedAccounts].sort((a, b) => {
-      const nameA = a.name.toLowerCase();
-      const nameB = b.name.toLowerCase();
-      
-      if (sortDirection === 'asc') {
-        return nameA.localeCompare(nameB);
-      } else {
-        return nameB.localeCompare(nameA);
-      }
+      return matchesSearch && matchesRole;
+    })
+    .sort((a, b) => {
+      if (sortDirection === 'none') return 0;
+      if (sortDirection === 'asc') return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
+      return b.name.toLowerCase().localeCompare(a.name.toLowerCase());
     });
-  }
-  
-  // Render different forms based on selected role
-  const renderAccountForm = () => {
-    if (selectedRole === 'Admin') {
-      return (
-        <div className="account-form">
-          <div className="form-row">
-            <label htmlFor="name">Họ và tên</label>
-            <input
-              type="text"
-              id="name"
-              name="name"
-              value={formData.name}
-              onChange={handleInputChange}
-            />
-          </div>
-          
-          <div className="form-row">
-            <label htmlFor="dob">Ngày sinh</label>
-            <input
-              type="text"
-              id="dob"
-              name="dob"
-              value={formData.dob}
-              onChange={handleInputChange}
-              placeholder="DD/MM/YYYY"
-            />
-          </div>
-          
-          <div className="form-row">
-            <label htmlFor="email">Email</label>
-            <input
-              type="email"
-              id="email"
-              name="email"
-              value={formData.email}
-              onChange={handleInputChange}
-            />
-          </div>
-          
-          <div className="form-row">
-            <label htmlFor="phone">Điện thoại</label>
-            <input
-              type="text"
-              id="phone"
-              name="phone"
-              value={formData.phone}
-              onChange={handleInputChange}
-            />
-          </div>
-          
-          <div className="form-row">
-            <label htmlFor="code">Mã số</label>
-            <input
-              type="text"
-              id="code"
-              name="code"
-              value={formData.code}
-              onChange={handleInputChange}
-            />
-          </div>
-          
-          <div className="form-row">
-            <label htmlFor="password">Mật khẩu</label>
-            <input
-              type="password"
-              id="password"
-              name="password"
-              value={formData.password}
-              onChange={handleInputChange}
-            />
-          </div>
-        </div>
-      );
-    } else {
-      // Student form with balanced two-column layout
-      return (
-        <div className="account-form student-form two-columns">
-          <div className="form-col">
-            <div className="form-row">
-              <label htmlFor="name">Họ và tên</label>
-              <input
-                type="text"
-                id="name"
-                name="name"
-                value={formData.name}
-                onChange={handleInputChange}
-              />
-            </div>
-            <div className="form-row">
-              <label htmlFor="dob">Ngày sinh</label>
-              <input
-                type="text"
-                id="dob"
-                name="dob"
-                value={formData.dob}
-                onChange={handleInputChange}
-                placeholder="DD/MM/YYYY"
-              />
-            </div>
-            <div className="form-row">
-              <label htmlFor="phone">Số điện thoại</label>
-              <input
-                type="text"
-                id="phone"
-                name="phone"
-                value={formData.phone}
-                onChange={handleInputChange}
-              />
-            </div>
-            <div className="form-row">
-              <label htmlFor="email">Email</label>
-              <input
-                type="email"
-                id="email"
-                name="email"
-                value={formData.email}
-                onChange={handleInputChange}
-              />
-            </div>
-            <div className="form-row group-row">
-              <label htmlFor="code">Mã số</label>
-              <div className="input-with-dropdown">
-                <input
-                  type="text"
-                  id="code"
-                  name="code"
-                  value={formData.code.replace(/\d{2}$/, '')}
-                  onChange={(e) => {
-                    const baseCode = e.target.value;
-                    setFormData(prev => ({
-                      ...prev,
-                      code: baseCode + selectedBatch
-                    }));
-                  }}
-                  placeholder="Nhập mã số"
-                  className="code-input"
-                />
-                <select 
-                  value={selectedBatch} 
-                  onChange={handleBatchChange}
-                  className="batch-dropdown"
-                >
-                  {[64, 65, 66, 67, 68, 69].map(batch => (
-                    <option key={batch} value={batch}>{batch}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-            <div className="form-row">
-              <label htmlFor="password">Mật khẩu</label>
-              <input
-                type="password"
-                id="password"
-                name="password"
-                value={formData.password}
-                onChange={handleInputChange}
-              />
-            </div>
-          </div>
-          <div className="form-col">
-            <div className="form-row">
-              <label htmlFor="major">Ngành</label>
-              <input
-                type="text"
-                id="major"
-                name="major"
-                value={formData.major}
-                onChange={handleInputChange}
-              />
-            </div>
-            <div className="form-row">
-              <label htmlFor="specialization">Chuyên ngành</label>
-              <input
-                type="text"
-                id="specialization"
-                name="specialization"
-                value={formData.specialization}
-                onChange={handleInputChange}
-              />
-            </div>
-            <div className="form-row">
-              <label htmlFor="faculty">Khoa</label>
-              <input
-                type="text"
-                id="faculty"
-                name="faculty"
-                value={formData.faculty}
-                onChange={handleInputChange}
-              />
-            </div>
-            <div className="form-row">
-              <label htmlFor="trainingType">Loại hình đào tạo</label>
-              <input
-                type="text"
-                id="trainingType"
-                name="trainingType"
-                value={formData.trainingType}
-                onChange={handleInputChange}
-              />
-            </div>
-            <div className="form-row">
-              <label htmlFor="universitySystem">Hệ đại học</label>
-              <input
-                type="text"
-                id="universitySystem"
-                name="universitySystem"
-                value={formData.universitySystem}
-                onChange={handleInputChange}
-              />
-            </div>
-            <div className="form-row">
-              <label htmlFor="classSection">Lớp</label>
-              <input
-                type="text"
-                id="classSection"
-                name="classSection"
-                value={formData.classSection}
-                onChange={(e) => {
-                  const classValue = e.target.value;
-                  setFormData(prev => ({
-                    ...prev,
-                    classSection: classValue
-                  }));
-                }}
-              />
-            </div>
-          </div>
-        </div>
-      );
-    }
-  };
-  
+
+  // Component return
   return (
-    <motion.div
-      className="account-management"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.3 }}
-    >
-      {/* Search and filter section */}
-      <div className="top-actions">
-        <div className="search-section">
-          <div className="search-container">
-            <FaSearch className="search-icon" />
-            <input 
-              type="text" 
-              placeholder={`Tìm kiếm theo ${
-                searchFilter === 'name' ? 'họ tên' : 
-                searchFilter === 'code' ? 'mã số' : 'số điện thoại'
-              }`} 
-              value={searchTerm}
-              onChange={handleSearch}
-              className="search-input"
-            />
-          </div>
-          
-          <div className="filter-bar">
-            <div className="search-filter">
-              <span className="filter-label">Tìm theo:</span>
-              <div className="filter-options">
-                <button 
-                  className={`filter-option ${searchFilter === 'name' ? 'active' : ''}`}
-                  onClick={() => handleFilterChange('name')}
-                >
-                  Họ tên
-                </button>
-                <button 
-                  className={`filter-option ${searchFilter === 'code' ? 'active' : ''}`}
-                  onClick={() => handleFilterChange('code')}
-                >
-                  Mã số
-                </button>
-                <button 
-                  className={`filter-option ${searchFilter === 'phone' ? 'active' : ''}`}
-                  onClick={() => handleFilterChange('phone')}
-                >
-                  Số điện thoại
-                </button>
-              </div>
-            </div>
-            
-            <div className="advanced-filters">
-              <div className="sort-filter">
-                <button 
-                  className={`sort-button ${sortDirection !== 'none' ? 'active' : ''}`}
-                  onClick={toggleSort}
-                  title="Sắp xếp theo tên"
-                >
-                  {sortDirection === 'asc' ? <FaSortAlphaDown /> : 
-                   sortDirection === 'desc' ? <FaSortAlphaUp /> : 
-                   <FaSortAlphaDown />} 
-                  <span>A-Z</span>
-                </button>
-              </div>
-              
-              <div className="role-filter">
-                <span className="filter-label">Vai trò:</span>
-                <div className="filter-options">
-                  <button 
-                    className={`filter-option ${roleFilter === 'all' ? 'active' : ''}`}
-                    onClick={() => handleRoleFilter('all')}
-                  >
-                    Tất cả
-                  </button>
-                  <button 
-                    className={`filter-option ${roleFilter === 'student' ? 'active' : ''}`}
-                    onClick={() => handleRoleFilter('student')}
-                  >
-                    Sinh viên
-                  </button>
-                  <button 
-                    className={`filter-option ${roleFilter === 'admin' ? 'active' : ''}`}
-                    onClick={() => handleRoleFilter('admin')}
-                  >
-                    Admin
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        <button className="add-account-btn" onClick={openCreateModal}>
-          <span className="add-icon">+</span> Thêm tài khoản
+    <div className="account-management">
+      {/* Header */}
+      <div className="header">
+        <h1>Quản lý tài khoản</h1>
+        <button className="create-btn" onClick={() => setShowCreateModal(true)}>
+          Tạo tài khoản mới
         </button>
       </div>
-      
-      <h2 className="section-title">Danh sách tài khoản</h2>
-      
-      <div className="accounts-table-container">
-        <table className="accounts-table">
+
+      {/* Search and Filter Bar */}
+      <div className="filter-bar">
+        <div className="search-container">
+          <FaSearch className="search-icon" />
+          <input
+            type="text"
+            placeholder="Tìm kiếm..."
+            value={searchTerm}
+            onChange={handleSearch}
+          />
+        </div>
+
+        {/* Filter Options */}
+        <div className="filters">
+          <div className="filter-group">
+            <span className="filter-label">Tìm theo:</span>
+            <div className="filter-options">
+              <button
+                className={`filter-option ${searchFilter === 'name' ? 'active' : ''}`}
+                onClick={() => handleFilterChange('name')}
+              >
+                Họ tên
+              </button>
+              <button
+                className={`filter-option ${searchFilter === 'code' ? 'active' : ''}`}
+                onClick={() => handleFilterChange('code')}
+              >
+                Mã số
+              </button>
+              <button
+                className={`filter-option ${searchFilter === 'email' ? 'active' : ''}`}
+                onClick={() => handleFilterChange('email')}
+              >
+                Email
+              </button>
+            </div>
+          </div>
+
+          <div className="filter-group">
+            <span className="filter-label">Vai trò:</span>
+            <div className="filter-options">
+              <button
+                className={`filter-option ${roleFilter === 'all' ? 'active' : ''}`}
+                onClick={() => handleRoleFilter('all')}
+              >
+                Tất cả
+              </button>
+              <button
+                className={`filter-option ${roleFilter === 'student' ? 'active' : ''}`}
+                onClick={() => handleRoleFilter('student')}
+              >
+                Sinh viên
+              </button>
+              <button
+                className={`filter-option ${roleFilter === 'admin' ? 'active' : ''}`}
+                onClick={() => handleRoleFilter('admin')}
+              >
+                Admin
+              </button>
+            </div>
+          </div>
+
+          <button className="sort-btn" onClick={toggleSort}>
+            {sortDirection === 'none' ? (
+              'Sắp xếp'
+            ) : sortDirection === 'asc' ? (
+              <FaSortAlphaDown />
+            ) : (
+              <FaSortAlphaUp />
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* Accounts Table */}
+      <div className="table-container">
+        <table>
           <thead>
             <tr>
-              <th className="id-col">ID</th>
-              <th className="name-col">Họ và tên</th>
-              <th className="phone-col">Số điện thoại</th>
-              <th className="email-col">Email</th>
-              <th className="code-col">Mã số</th>
-              <th className="role-col">Quyền</th>
-              <th className="actions-col"></th>
+              <th>Họ và tên</th>
+              <th>Mã số</th>
+              <th>Email</th>
+              <th>Vai trò</th>
+              <th>Thao tác</th>
             </tr>
           </thead>
           <tbody>
             {displayedAccounts.map((account) => (
               <tr key={account.id}>
-                <td>{account.id}</td>
                 <td>{account.name}</td>
-                <td>{account.phone}</td>
-                <td>{account.email}</td>
                 <td>{account.code}</td>
-                <td className={account.role === 'Admin' ? 'admin-role' : 'student-role'}>
-                  {account.role}
+                <td>{account.email}</td>
+                <td>
+                  <div className={`role-pill role-${account.role.toLowerCase()}`}>
+                    {account.role === 'Student' ? 'Sinh viên' : 'Admin'}
+                  </div>
                 </td>
                 <td>
-                  <IconButton 
-                    size="small" 
-                    onClick={(e) => handleMenuOpen(e, account.id)}
-                    aria-label="actions"
+                  <IconButton
+                    onClick={(event) => handleMenuOpen(event, account.id)}
                   >
                     <FaEllipsisH />
                   </IconButton>
                 </td>
               </tr>
             ))}
-            {accounts.length === 0 ? (
-              <tr>
-                <td colSpan={7} className="no-results">Không có dữ liệu</td>
-              </tr>
-            ) : displayedAccounts.length === 0 && (
-              <tr>
-                <td colSpan={7} className="no-results">Không tìm thấy kết quả phù hợp</td>
-              </tr>
-            )}
           </tbody>
         </table>
       </div>
-      
-      {/* Dropdown Menu */}
+
+      {/* Action Menu */}
       <Menu
         anchorEl={anchorEl}
         open={Boolean(anchorEl)}
         onClose={handleMenuClose}
-        anchorOrigin={{
-          vertical: 'bottom',
-          horizontal: 'right',
-        }}
-        transformOrigin={{
-          vertical: 'top',
-          horizontal: 'right',
-        }}
       >
         <MenuItem onClick={handleViewAccount}>
           <ListItemIcon>
@@ -1095,124 +707,284 @@ const QuanLyTaiKhoan: React.FC = () => {
           </ListItemIcon>
           <ListItemText>Chỉnh sửa thông tin</ListItemText>
         </MenuItem>
-        <MenuItem onClick={handleDeleteAccount} sx={{ color: 'error.main' }}>
+        <MenuItem onClick={handleConfirmDelete} sx={{ color: 'error.main' }}>
           <ListItemIcon>
             <DeleteIcon fontSize="small" sx={{ color: 'error.main' }} />
           </ListItemIcon>
           <ListItemText>Xóa thông tin</ListItemText>
         </MenuItem>
       </Menu>
-      
-      {/* Create Account Modal with steps */}
+
+      {/* Create Account Modal */}
       <AnimatePresence>
         {showCreateModal && (
-          <motion.div 
-            className="modal-overlay"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
+          <motion.div className="modal-overlay">
             <motion.div 
-              className="create-account-modal"
+              className="modal-content"
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
               transition={{ type: "spring", damping: 20, stiffness: 300 }}
             >
-              <AnimatePresence mode="wait">
-                {modalStep === 'select-role' && (
-                  <motion.div
-                    key="select-role"
-                    initial={{ x: 50, opacity: 0 }}
-                    animate={{ x: 0, opacity: 1 }}
-                    exit={{ x: -50, opacity: 0 }}
-                    transition={{ duration: 0.3 }}
-                  >
-                    <h2 className="modal-title">Tạo thông tin tài khoản</h2>
-                    <div className="account-type-selection">
-                      <div 
-                        className={`account-type-option ${selectedRole === 'Admin' ? 'selected' : ''}`}
-                        onClick={() => handleRoleSelect('Admin')}
-                      >
-                        <div className="account-type-icon admin-icon">
-                          <FaUserCog />
-                        </div>
-                        <span className="account-type-label">Admin</span>
-                      </div>
-                      <div 
-                        className={`account-type-option ${selectedRole === 'Sinh viên' ? 'selected' : ''}`}
-                        onClick={() => handleRoleSelect('Sinh viên')}
-                      >
-                        <div className="account-type-icon student-icon">
-                          <FaGraduationCap />
-                        </div>
-                        <span className="account-type-label">Sinh viên</span>
-                      </div>
-                    </div>
-                    <div className="modal-actions">
-                      <button className="cancel-btn" onClick={handleCloseModal}>
-                        Hủy
-                      </button>
-                    </div>
-                  </motion.div>
-                )}
-                {modalStep === 'enter-details' && (
-                  <motion.div
-                    key="enter-details"
-                    initial={{ x: 50, opacity: 0 }}
-                    animate={{ x: 0, opacity: 1 }}
-                    exit={{ x: -50, opacity: 0 }}
-                    transition={{ duration: 0.3 }}
-                  >
-                    <h2 className="modal-title">
-                      {selectedRole === 'Admin' ? 'Tạo thông tin tài khoản' : 'Chỉnh sửa thông tin tài khoản'}
-                    </h2>
-                    {renderAccountForm()}
-                    <div className="modal-actions">
-                      <button 
-                        className="confirm-btn" 
-                        onClick={() => setShowCreateConfirm(true)}
-                        disabled={!validateForm(formData, selectedRole)}
-                      >
-                        Xác nhận
-                      </button>
-                      <button className="cancel-btn" onClick={handleCloseModal}>
-                        Hủy
-                      </button>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+              <div className="modal-header">
+                <h2>{modalStep === 'select-role' ? 'Chọn loại tài khoản' : 'Tạo tài khoản mới'}</h2>
+                <button className="close-btn" onClick={() => setShowCreateModal(false)}>×</button>
+              </div>
 
-      {/* Delete Confirmation Modal */}
-      <AnimatePresence>
-        {showDeleteConfirm && (
-          <motion.div 
-            className="modal-overlay"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
-            <motion.div 
-              className="confirmation-modal"
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              transition={{ type: "spring", damping: 20, stiffness: 300 }}
-            >
-              <h2 className="confirm-title">Bạn có xác nhận muốn xóa thông tin không?</h2>
-              
-              <div className="confirm-actions">
-                <button className="confirm-btn" onClick={confirmDelete}>
-                  Có
-                </button>
-                <button className="cancel-btn" onClick={cancelDelete}>
-                  Không
-                </button>
+              <div className="modal-body">
+                {modalStep === 'select-role' ? (
+                  <div className="role-selection">
+                    <button
+                      className="role-btn"
+                      onClick={() => handleRoleSelect('Student')}
+                    >
+                      <FaGraduationCap />
+                      <span>Sinh viên</span>
+                    </button>
+                    <button
+                      className="role-btn"
+                      onClick={() => handleRoleSelect('Admin')}
+                    >
+                      <FaUserCog />
+                      <span>Quản trị viên</span>
+                    </button>
+                  </div>
+                ) : (
+                  <div className="form">
+                    <div className="form-row">
+                      <label htmlFor="name">Họ và tên</label>
+                      <div className="input-wrapper">
+                        <input
+                          type="text"
+                          id="name"
+                          name="name"
+                          value={formData.name}
+                          onChange={handleInputChange}
+                          className={validationErrors.name ? 'error' : ''}
+                        />
+                        {validationErrors.name && (
+                          <div className="error-message">{validationErrors.name}</div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="form-row">
+                      <label htmlFor="phone">Số điện thoại</label>
+                      <div className="input-wrapper">
+                        <input
+                          type="text"
+                          id="phone"
+                          name="phone"
+                          value={formData.phone}
+                          onChange={handleInputChange}
+                          className={validationErrors.phone ? 'error' : ''}
+                        />
+                        {validationErrors.phone && (
+                          <div className="error-message">{validationErrors.phone}</div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="form-row">
+                      <label htmlFor="email">Email</label>
+                      <div className="input-wrapper">
+                        <input
+                          type="email"
+                          id="email"
+                          name="email"
+                          value={formData.email}
+                          onChange={handleInputChange}
+                          className={validationErrors.email ? 'error' : ''}
+                        />
+                        {validationErrors.email && (
+                          <div className="error-message">{validationErrors.email}</div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="form-row">
+                      <label htmlFor="code">Mã số</label>
+                      <div className="input-wrapper">
+                        <input
+                          type="text"
+                          id="code"
+                          name="code"
+                          value={formData.code}
+                          onChange={handleInputChange}
+                          className={validationErrors.code ? 'error' : ''}
+                        />
+                        {validationErrors.code && (
+                          <div className="error-message">{validationErrors.code}</div>
+                        )}
+                      </div>
+                    </div>
+
+                    {selectedRole === 'Student' && (
+                      <>
+                        <div className="form-row">
+                          <label htmlFor="dob">Ngày sinh</label>
+                          <div className="input-wrapper">
+                            <input
+                              type="text"
+                              id="dob"
+                              name="dob"
+                              value={formData.dob}
+                              onChange={handleInputChange}
+                              className={validationErrors.dob ? 'error' : ''}
+                              placeholder="DD/MM/YYYY"
+                            />
+                            {validationErrors.dob && (
+                              <div className="error-message">{validationErrors.dob}</div>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="form-row">
+                          <label htmlFor="major">Ngành học</label>
+                          <div className="input-wrapper">
+                            <input
+                              type="text"
+                              id="major"
+                              name="major"
+                              value={formData.major}
+                              onChange={handleInputChange}
+                              className={validationErrors.major ? 'error' : ''}
+                            />
+                            {validationErrors.major && (
+                              <div className="error-message">{validationErrors.major}</div>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="form-row">
+                          <label htmlFor="specialization">Chuyên ngành</label>
+                          <div className="input-wrapper">
+                            <input
+                              type="text"
+                              id="specialization"
+                              name="specialization"
+                              value={formData.specialization}
+                              onChange={handleInputChange}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="form-row">
+                          <label htmlFor="faculty">Khoa</label>
+                          <div className="input-wrapper">
+                            <input
+                              type="text"
+                              id="faculty"
+                              name="faculty"
+                              value={formData.faculty}
+                              onChange={handleInputChange}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="form-row">
+                          <label htmlFor="trainingType">Loại hình đào tạo</label>
+                          <div className="input-wrapper">
+                            <input
+                              type="text"
+                              id="trainingType"
+                              name="trainingType"
+                              value={formData.trainingType}
+                              onChange={handleInputChange}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="form-row">
+                          <label htmlFor="universitySystem">Hệ đại học</label>
+                          <div className="input-wrapper">
+                            <input
+                              type="text"
+                              id="universitySystem"
+                              name="universitySystem"
+                              value={formData.universitySystem}
+                              onChange={handleInputChange}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="form-row">
+                          <label htmlFor="classGroup">Khóa</label>
+                          <div className="input-wrapper">
+                            <select
+                              id="classGroup"
+                              name="classGroup"
+                              value={formData.classGroup}
+                              onChange={handleBatchChange}
+                              className={validationErrors.classGroup ? 'error' : ''}
+                            >
+                              <option value="">Chọn khóa</option>
+                              <option value="67">Khóa 67</option>
+                              <option value="68">Khóa 68</option>
+                              <option value="69">Khóa 69</option>
+                            </select>
+                            {validationErrors.classGroup && (
+                              <div className="error-message">{validationErrors.classGroup}</div>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="form-row">
+                          <label htmlFor="classSection">Lớp</label>
+                          <div className="input-wrapper">
+                            <select
+                              id="classSection"
+                              name="classSection"
+                              value={formData.classSection}
+                              onChange={handleInputChange}
+                            >
+                              <option value="">Chọn lớp</option>
+                              <option value="CS1">CS1</option>
+                              <option value="CS2">CS2</option>
+                              <option value="IS1">IS1</option>
+                              <option value="IS2">IS2</option>
+                            </select>
+                          </div>
+                        </div>
+                      </>
+                    )}
+
+                    <div className="form-row">
+                      <label htmlFor="password">Mật khẩu</label>
+                      <div className="input-wrapper">
+                        <input
+                          type="password"
+                          id="password"
+                          name="password"
+                          value={formData.password}
+                          onChange={handleInputChange}
+                          className={validationErrors.password ? 'error' : ''}
+                        />
+                        {validationErrors.password && (
+                          <div className="error-message">{validationErrors.password}</div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="modal-footer">
+                {modalStep === 'select-role' ? (
+                  <button className="cancel-btn" onClick={() => setShowCreateModal(false)}>
+                    Hủy
+                  </button>
+                ) : (
+                  <>
+                    <button className="back-btn" onClick={() => setModalStep('select-role')}>Quay lại</button>
+                    <button className="cancel-btn" onClick={() => setShowCreateModal(false)}>
+                      Hủy
+                    </button>
+                    <button className="confirm-btn" onClick={handleCreateAccount}>
+                      Tạo tài khoản
+                    </button>
+                  </>
+                )}
               </div>
             </motion.div>
           </motion.div>
@@ -1222,260 +994,218 @@ const QuanLyTaiKhoan: React.FC = () => {
       {/* Edit Account Modal */}
       <AnimatePresence>
         {showEditModal && (
-          <motion.div 
-            className="modal-overlay"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
+          <motion.div className="modal-overlay">
             <motion.div 
-              className="create-account-modal"  // Có thể sử dụng lại style của create modal
+              className="modal-content"
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
               transition={{ type: "spring", damping: 20, stiffness: 300 }}
             >
-              <h2 className="modal-title">Chỉnh sửa thông tin tài khoản</h2>
-              
-              {/* Render form tương tự như khi tạo tài khoản, nhưng với dữ liệu từ editFormData */}
-              {editRole === 'Admin' ? (
-                <div className="account-form">
+              <div className="modal-header">
+                <h2>Chỉnh sửa tài khoản</h2>
+                <button className="close-btn" onClick={handleCloseEditModal}>×</button>
+              </div>
+
+              <div className="modal-body">
+                <div className="form">
                   <div className="form-row">
                     <label htmlFor="edit-name">Họ và tên</label>
-                    <input
-                      type="text"
-                      id="edit-name"
-                      name="name"
-                      value={editFormData.name}
-                      onChange={handleEditInputChange}
-                    />
-                  </div>
-                  
-                  <div className="form-row">
-                    <label htmlFor="edit-dob">Ngày sinh</label>
-                    <input
-                      type="text"
-                      id="edit-dob"
-                      name="dob"
-                      value={editFormData.dob}
-                      onChange={handleEditInputChange}
-                      placeholder="DD/MM/YYYY"
-                    />
-                  </div>
-                  
-                  <div className="form-row">
-                    <label htmlFor="edit-email">Email</label>
-                    <input
-                      type="email"
-                      id="edit-email"
-                      name="email"
-                      value={editFormData.email}
-                      onChange={handleEditInputChange}
-                    />
-                  </div>
-                  
-                  <div className="form-row">
-                    <label htmlFor="edit-phone">Điện thoại</label>
-                    <input
-                      type="text"
-                      id="edit-phone"
-                      name="phone"
-                      value={editFormData.phone}
-                      onChange={handleEditInputChange}
-                    />
-                  </div>
-                  
-                  <div className="form-row">
-                    <label htmlFor="edit-code">Mã số</label>
-                    <input
-                      type="text"
-                      id="edit-code"
-                      name="code"
-                      value={editFormData.code}
-                      onChange={handleEditInputChange}
-                    />
-                  </div>
-                  
-                  <div className="form-row">
-                    <label htmlFor="edit-password">Mật khẩu</label>
-                    <input
-                      type="password"
-                      id="edit-password"
-                      name="password"
-                      value={editFormData.password}
-                      onChange={handleEditInputChange}
-                    />
-                  </div>
-                </div>
-              ) : (
-                <div className="account-form student-form two-columns">
-                  <div className="form-col">
-                    <div className="form-row">
-                      <label htmlFor="edit-name">Họ và tên</label>
+                    <div className="input-wrapper">
                       <input
                         type="text"
                         id="edit-name"
                         name="name"
-                        value={editFormData.name}
+                        value={editedData.name}
                         onChange={handleEditInputChange}
+                        className={validationErrors.name ? 'error' : ''}
                       />
                     </div>
-                    <div className="form-row">
-                      <label htmlFor="edit-dob">Ngày sinh</label>
-                      <input
-                        type="text"
-                        id="edit-dob"
-                        name="dob"
-                        value={editFormData.dob}
-                        onChange={handleEditInputChange}
-                        placeholder="DD/MM/YYYY"
-                      />
-                    </div>
-                    <div className="form-row">
-                      <label htmlFor="edit-phone">Số điện thoại</label>
+                  </div>
+
+                  <div className="form-row">
+                    <label htmlFor="edit-phone">Số điện thoại</label>
+                    <div className="input-wrapper">
                       <input
                         type="text"
                         id="edit-phone"
                         name="phone"
-                        value={editFormData.phone}
+                        value={editedData.phone}
                         onChange={handleEditInputChange}
+                        className={validationErrors.phone ? 'error' : ''}
                       />
                     </div>
-                    <div className="form-row">
-                      <label htmlFor="edit-email">Email</label>
+                  </div>
+
+                  <div className="form-row">
+                    <label htmlFor="edit-email">Email</label>
+                    <div className="input-wrapper">
                       <input
                         type="email"
                         id="edit-email"
                         name="email"
-                        value={editFormData.email}
+                        value={editedData.email}
                         onChange={handleEditInputChange}
+                        className={validationErrors.email ? 'error' : ''}
                       />
                     </div>
-                    <div className="form-row group-row">
-                      <label htmlFor="edit-code">Mã số</label>
-                      <div className="input-with-dropdown">
-                        <input
-                          type="text"
-                          id="edit-code"
-                          name="code"
-                          value={editFormData.code.replace(/\d{2}$/, '')}
-                          onChange={(e) => {
-                            const baseCode = e.target.value;
-                            setEditFormData(prev => ({
-                              ...prev,
-                              code: baseCode + editSelectedBatch
-                            }));
-                          }}
-                          className="code-input"
-                        />
-                        <select 
-                          value={editSelectedBatch} 
-                          onChange={handleEditBatchChange}
-                          className="batch-dropdown"
-                        >
-                          {[64, 65, 66, 67, 68, 69].map(batch => (
-                            <option key={batch} value={batch}>{batch}</option>
-                          ))}
-                        </select>
-                      </div>
+                  </div>
+
+                  <div className="form-row">
+                    <label htmlFor="edit-code">Mã số</label>
+                    <div className="input-wrapper">
+                      <input
+                        type="text"
+                        id="edit-code"
+                        name="code"
+                        value={editedData.code}
+                        onChange={handleEditInputChange}
+                        className={validationErrors.code ? 'error' : ''}
+                      />
                     </div>
-                    <div className="form-row">
-                      <label htmlFor="edit-password">Mật khẩu</label>
+                  </div>
+
+                  {editedData.role === 'Student' && (
+                    <>
+                      <div className="form-row">
+                        <label htmlFor="edit-dob">Ngày sinh</label>
+                        <div className="input-wrapper">
+                          <input
+                            type="text"
+                            id="edit-dob"
+                            name="dob"
+                            value={editedData.dob}
+                            onChange={handleEditInputChange}
+                            className={validationErrors.dob ? 'error' : ''}
+                            placeholder="DD/MM/YYYY"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="form-row">
+                        <label htmlFor="edit-major">Ngành học</label>
+                        <div className="input-wrapper">
+                          <input
+                            type="text"
+                            id="edit-major"
+                            name="major"
+                            value={editedData.major}
+                            onChange={handleEditInputChange}
+                            className={validationErrors.major ? 'error' : ''}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="form-row">
+                        <label htmlFor="edit-specialization">Chuyên ngành</label>
+                        <div className="input-wrapper">
+                          <input
+                            type="text"
+                            id="edit-specialization"
+                            name="specialization"
+                            value={editedData.specialization}
+                            onChange={handleEditInputChange}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="form-row">
+                        <label htmlFor="edit-faculty">Khoa</label>
+                        <div className="input-wrapper">
+                          <input
+                            type="text"
+                            id="edit-faculty"
+                            name="faculty"
+                            value={editedData.faculty}
+                            onChange={handleEditInputChange}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="form-row">
+                        <label htmlFor="edit-training-type">Loại hình đào tạo</label>
+                        <div className="input-wrapper">
+                          <input
+                            type="text"
+                            id="edit-training-type"
+                            name="trainingType"
+                            value={editedData.trainingType}
+                            onChange={handleEditInputChange}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="form-row">
+                        <label htmlFor="edit-university-system">Hệ đại học</label>
+                        <div className="input-wrapper">
+                          <input
+                            type="text"
+                            id="edit-university-system"
+                            name="universitySystem"
+                            value={editedData.universitySystem}
+                            onChange={handleEditInputChange}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="form-row">
+                        <label htmlFor="edit-class-group">Lớp</label>
+                        <div className="input-wrapper">
+                          <select
+                            id="edit-class-group"
+                            name="classGroup"
+                            value={editedData.classGroup}
+                            onChange={handleEditInputChange}
+                            className={validationErrors.classGroup ? 'error' : ''}
+                          >
+                            <option value="">Chọn lớp</option>
+                            <option value="67">Khóa 67</option>
+                            <option value="68">Khóa 68</option>
+                            <option value="69">Khóa 69</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="form-row">
+                        <label htmlFor="edit-class-section">Tiết học</label>
+                        <div className="input-wrapper">
+                          <select
+                            id="edit-class-section"
+                            name="classSection"
+                            value={editedData.classSection}
+                            onChange={handleEditInputChange}
+                          >
+                            <option value="">Chọn tiết học</option>
+                            <option value="CS1">CS1</option>
+                            <option value="CS2">CS2</option>
+                            <option value="IS1">IS1</option>
+                            <option value="IS2">IS2</option>
+                          </select>
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  <div className="form-row">
+                    <label htmlFor="edit-password">Mật khẩu</label>
+                    <div className="input-wrapper">
                       <input
                         type="password"
                         id="edit-password"
                         name="password"
-                        value={editFormData.password}
+                        value={editedData.password}
                         onChange={handleEditInputChange}
-                      />
-                    </div>
-                  </div>
-                  <div className="form-col">
-                    <div className="form-row">
-                      <label htmlFor="edit-major">Ngành</label>
-                      <input
-                        type="text"
-                        id="edit-major"
-                        name="major"
-                        value={editFormData.major}
-                        onChange={handleEditInputChange}
-                      />
-                    </div>
-                    <div className="form-row">
-                      <label htmlFor="edit-specialization">Chuyên ngành</label>
-                      <input
-                        type="text"
-                        id="edit-specialization"
-                        name="specialization"
-                        value={editFormData.specialization}
-                        onChange={handleEditInputChange}
-                      />
-                    </div>
-                    <div className="form-row">
-                      <label htmlFor="edit-faculty">Khoa</label>
-                      <input
-                        type="text"
-                        id="edit-faculty"
-                        name="faculty"
-                        value={editFormData.faculty}
-                        onChange={handleEditInputChange}
-                      />
-                    </div>
-                    <div className="form-row">
-                      <label htmlFor="edit-trainingType">Loại hình đào tạo</label>
-                      <input
-                        type="text"
-                        id="edit-trainingType"
-                        name="trainingType"
-                        value={editFormData.trainingType}
-                        onChange={handleEditInputChange}
-                      />
-                    </div>
-                    <div className="form-row">
-                      <label htmlFor="edit-universitySystem">Hệ đại học</label>
-                      <input
-                        type="text"
-                        id="edit-universitySystem"
-                        name="universitySystem"
-                        value={editFormData.universitySystem}
-                        onChange={handleEditInputChange}
-                      />
-                    </div>
-                    <div className="form-row">
-                      <label htmlFor="edit-classSection">Lớp</label>
-                      <input
-                        type="text"
-                        id="edit-classSection"
-                        name="classSection"
-                        value={editFormData.classSection}
-                        onChange={handleEditInputChange}
+                        placeholder="Để trống nếu không đổi mật khẩu"
                       />
                     </div>
                   </div>
                 </div>
-              )}
-              
-              <div className="modal-actions">
-                <button 
-                  className="confirm-btn" 
-                  onClick={() => {
-                    // Kiểm tra xem có sự thay đổi không
-                    const hasChanges = JSON.stringify(editFormData) !== JSON.stringify(originalEditData);
-                    
-                    if (hasChanges) {
-                      // Nếu có thay đổi, hiện modal xác nhận
-                      setShowEditConfirm(true);
-                    } else {
-                      // Nếu không có thay đổi, xác nhận luôn
-                      handleSaveEdit();
-                    }
-                  }}
-                  disabled={!validateForm(editFormData, editRole)}
-                >
-                  Xác nhận
-                </button>
-                <button className="cancel-btn" onClick={handleCloseEditModal}>
-                  Hủy
+              </div>
+
+              <div className="modal-footer">
+                <button className="cancel-btn" onClick={handleCloseEditModal}>Hủy</button>
+                <button className="confirm-btn" onClick={handleUpdateAccount}>
+                  Lưu thay đổi
                 </button>
               </div>
             </motion.div>
@@ -1486,105 +1216,92 @@ const QuanLyTaiKhoan: React.FC = () => {
       {/* View Account Modal */}
       <AnimatePresence>
         {showViewModal && (
-          <motion.div 
-            className="modal-overlay"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
+          <motion.div className="modal-overlay">
             <motion.div 
-              className="create-account-modal"
+              className="modal-content"
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
               transition={{ type: "spring", damping: 20, stiffness: 300 }}
             >
-              <h2 className="modal-title">Thông tin tài khoản</h2>
-              
-              {/* Hiển thị thông tin dựa trên role */}
-              {viewRole === 'Admin' ? (
-                <div className="account-form view-form single-col">
-                  <div className="form-row">
-                    <label>Họ tên:</label>
-                    <div className="view-value">{viewAccountData.name}</div>
-                  </div>
-                  
-                  <div className="form-row">
-                    <label>Ngày sinh:</label>
-                    <div className="view-value">{viewAccountData.dob}</div>
-                  </div>
-                  
-                  <div className="form-row">
-                    <label>Email:</label>
-                    <div className="view-value">{viewAccountData.email}</div>
-                  </div>
-                  
-                  <div className="form-row">
-                    <label>Điện thoại:</label>
-                    <div className="view-value">{viewAccountData.phone}</div>
-                  </div>
-                  
-                  <div className="form-row">
-                    <label>Mã số:</label>
-                    <div className="view-value">{viewAccountData.code}</div>
-                  </div>
-                </div>
-              ) : (
-                <div className="account-form view-form two-cols-centered">
-                  <div className="view-cols">
-                    <div className="view-col">
+              <div className="modal-header">
+                <h2>Thông tin tài khoản</h2>
+                <button className="close-btn" onClick={handleCloseViewModal}>×</button>
+              </div>
+
+              <div className="modal-body">
+                <div className="view-form">
+                  {viewAccountData.role === 'Admin' ? (
+                    <div className="form single-col">
                       <div className="form-row">
                         <label>Họ tên:</label>
                         <div className="view-value">{viewAccountData.name}</div>
-                      </div>
-                      <div className="form-row">
-                        <label>Ngày sinh:</label>
-                        <div className="view-value">{viewAccountData.dob}</div>
-                      </div>
-                      <div className="form-row">
-                        <label>Số điện thoại:</label>
-                        <div className="view-value">{viewAccountData.phone}</div>
                       </div>
                       <div className="form-row">
                         <label>Email:</label>
                         <div className="view-value">{viewAccountData.email}</div>
                       </div>
                       <div className="form-row">
+                        <label>Điện thoại:</label>
+                        <div className="view-value">{viewAccountData.phone}</div>
+                      </div>
+                      <div className="form-row">
                         <label>Mã số:</label>
                         <div className="view-value">{viewAccountData.code}</div>
                       </div>
                     </div>
-                    <div className="view-col">
-                      <div className="form-row">
-                        <label>Ngành:</label>
-                        <div className="view-value">{viewAccountData.major}</div>
+                  ) : (
+                    <div className="form two-cols">
+                      <div className="form-col">
+                        <div className="form-row">
+                          <label>Họ tên:</label>
+                          <div className="view-value">{viewAccountData.name}</div>
+                        </div>
+                        <div className="form-row">
+                          <label>Email:</label>
+                          <div className="view-value">{viewAccountData.email}</div>
+                        </div>
+                        <div className="form-row">
+                          <label>Điện thoại:</label>
+                          <div className="view-value">{viewAccountData.phone}</div>
+                        </div>
+                        <div className="form-row">
+                          <label>Mã số:</label>
+                          <div className="view-value">{viewAccountData.code}</div>
+                        </div>
                       </div>
-                      <div className="form-row">
-                        <label>Chuyên ngành:</label>
-                        <div className="view-value">{viewAccountData.specialization}</div>
-                      </div>
-                      <div className="form-row">
-                        <label>Khoa:</label>
-                        <div className="view-value">{viewAccountData.faculty}</div>
-                      </div>
-                      <div className="form-row">
-                        <label>Loại hình đào tạo:</label>
-                        <div className="view-value">{viewAccountData.trainingType}</div>
-                      </div>
-                      <div className="form-row">
-                        <label>Hệ đại học:</label>
-                        <div className="view-value">{viewAccountData.universitySystem}</div>
-                      </div>
-                      <div className="form-row">
-                        <label>Lớp:</label>
-                        <div className="view-value">{viewAccountData.classGroup}{viewAccountData.classSection}</div>
+                      <div className="form-col">
+                        <div className="form-row">
+                          <label>Ngành:</label>
+                          <div className="view-value">{viewAccountData.major}</div>
+                        </div>
+                        <div className="form-row">
+                          <label>Chuyên ngành:</label>
+                          <div className="view-value">{viewAccountData.specialization}</div>
+                        </div>
+                        <div className="form-row">
+                          <label>Khoa:</label>
+                          <div className="view-value">{viewAccountData.faculty}</div>
+                        </div>
+                        <div className="form-row">
+                          <label>Loại hình đào tạo:</label>
+                          <div className="view-value">{viewAccountData.trainingType}</div>
+                        </div>
+                        <div className="form-row">
+                          <label>Hệ đại học:</label>
+                          <div className="view-value">{viewAccountData.universitySystem}</div>
+                        </div>
+                        <div className="form-row">
+                          <label>Lớp:</label>
+                          <div className="view-value">{viewAccountData.classGroup}{viewAccountData.classSection}</div>
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  )}
                 </div>
-              )}
-              
-              <div className="modal-actions">
+              </div>
+
+              <div className="modal-footer">
                 <button className="cancel-btn" onClick={handleCloseViewModal}>
                   Đóng
                 </button>
@@ -1594,38 +1311,32 @@ const QuanLyTaiKhoan: React.FC = () => {
         )}
       </AnimatePresence>
 
-      {/* Thêm modal xác nhận tạo tài khoản ngay dưới modal tạo tài khoản */}
+      {/* Delete Confirmation Modal */}
       <AnimatePresence>
-        {showCreateConfirm && (
-          <motion.div
-            className="modal-overlay"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
-            <motion.div
-              className="confirmation-modal"
+        {showDeleteConfirm && (
+          <motion.div className="modal-overlay">
+            <motion.div 
+              className="modal-content confirmation-modal"
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
               transition={{ type: "spring", damping: 20, stiffness: 300 }}
             >
-              <h2 className="confirm-title">Bạn có xác nhận muốn tạo tài khoản không?</h2>
-              <div className="confirm-actions">
-                <button
-                  className="confirm-btn"
-                  onClick={() => {
-                    handleCreateAccount();
-                    setShowCreateConfirm(false);
-                  }}
-                >
-                  Có
+              <div className="modal-header">
+                <h2>Xác nhận xóa</h2>
+              </div>
+
+              <div className="modal-body">
+                <p>Bạn có chắc chắn muốn xóa tài khoản này không?</p>
+                <p>Hành động này không thể hoàn tác.</p>
+              </div>
+
+              <div className="modal-footer">
+                <button className="cancel-btn" onClick={() => setShowDeleteConfirm(false)}>
+                  Hủy
                 </button>
-                <button
-                  className="cancel-btn"
-                  onClick={() => setShowCreateConfirm(false)}
-                >
-                  Không
+                <button className="confirm-btn delete-btn" onClick={handleDeleteAccount}>
+                  Xóa
                 </button>
               </div>
             </motion.div>
@@ -1633,45 +1344,25 @@ const QuanLyTaiKhoan: React.FC = () => {
         )}
       </AnimatePresence>
 
-      {/* Thêm modal xác nhận chỉnh sửa tài khoản trước thẻ đóng của component */}
+      {/* Alert Modal */}
       <AnimatePresence>
-        {showEditConfirm && (
-          <motion.div
-            className="modal-overlay"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
-            <motion.div
-              className="confirmation-modal"
+        {showAlertModal && (
+          <motion.div className="modal-overlay alert-overlay">
+            <motion.div 
+              className="alert-modal"
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
               transition={{ type: "spring", damping: 20, stiffness: 300 }}
             >
-              <h2 className="confirm-title">Bạn có xác nhận muốn thay đổi thông tin không?</h2>
-              <div className="confirm-actions">
-                <button
-                  className="confirm-btn"
-                  onClick={() => {
-                    handleSaveEdit();
-                    setShowEditConfirm(false);
-                  }}
-                >
-                  Có
-                </button>
-                <button
-                  className="cancel-btn"
-                  onClick={() => setShowEditConfirm(false)}
-                >
-                  Không
-                </button>
-              </div>
+              <h2>{alertTitle}</h2>
+              <p>{alertMessage}</p>
+              <button onClick={() => setShowAlertModal(false)}>OK</button>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
-    </motion.div>
+    </div>
   );
 };
 

@@ -13,13 +13,15 @@ const pool = mysql.createPool({
   queueLimit: 0
 });
 
-// Delete this when testing
-const connection = mysql.createConnection({
-  host: 'localhost',
-  user: 'root',
-  password: 'Kuonng17724@',
-  database: 'dkhp'
-});
+// Log connection config in development
+if (process.env.NODE_ENV === 'development') {
+  console.log('Database config:', {
+    host: process.env.DB_HOST,
+    port: process.env.DB_PORT,
+    user: process.env.DB_USER,
+    database: process.env.DB_NAME
+  });
+}
 
 // Test connection function - use this to verify database connectivity
 async function testConnection() {

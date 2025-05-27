@@ -968,3 +968,23 @@
 .specialized-major-dropdown .Select__option:hover {
   background-color: #e6f0ff;
 }
+
+.loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 300px;
+  font-size: 1.2rem;
+  color: #666;
+}
+
+.error {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 300px;
+  font-size: 1.2rem;
+  color: #ff4444;
+  padding: 20px;
+  text-align: center;
+}

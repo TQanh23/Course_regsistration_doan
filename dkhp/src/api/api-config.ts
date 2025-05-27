@@ -1,30 +1,37 @@
-/**
- * API Configuration File
- * 
- * This file contains configuration settings for API endpoints
- * Used by both web admin and mobile applications
- */
+import axios from 'axios';
 
 // Default API URL - change this to match your environment
 const DEFAULT_API_URL = 'http://localhost:3000/api';
 
 // Get the API URL from environment variables if available (for production builds)
-// For Vite + React web app
-let API_URL = import.meta.env.VITE_API_URL || DEFAULT_API_URL;
+const API_URL = import.meta.env.VITE_API_URL || DEFAULT_API_URL;
 
-// For React Native, try to access EXPO variables if they exist
-if (typeof import.meta.env.EXPO_PUBLIC_API_URL !== 'undefined') {
-  API_URL = import.meta.env.EXPO_PUBLIC_API_URL;
-}
-
-// API version
+// API configuration
 const API_VERSION = 'v1';
-
-// API timeout in milliseconds
 const API_TIMEOUT = 30000; // 30 seconds
-
-// Whether to include credentials (cookies) with requests
 const INCLUDE_CREDENTIALS = true;
+
+// Create base axios instance
+const axiosInstance = axios.create({
+  baseURL: API_URL,
+  timeout: API_TIMEOUT,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  withCredentials: INCLUDE_CREDENTIALS,
+});
+
+// Request interceptor to add auth token
+axiosInstance.interceptors.request.use(
+  async (config) => {
+    const token = localStorage.getItem('authToken');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
 
 // Common endpoints
 const ENDPOINTS = {
@@ -65,5 +72,6 @@ export {
   API_VERSION,
   API_TIMEOUT,
   INCLUDE_CREDENTIALS,
-  ENDPOINTS
+  ENDPOINTS,
+  axiosInstance
 };

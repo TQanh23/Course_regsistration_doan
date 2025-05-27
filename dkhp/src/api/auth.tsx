@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 import axios from 'axios';
 
 // Configure API URL - should be moved to environment variables in production
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
 // Types
 type User = {
@@ -47,7 +47,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
         
         // Verify token and get user info
-        const response = await axios.get(`${API_URL}/auth/me`);
+        const response = await axios.get(`${API_URL}/auth/me`, {
+          withCredentials: true,
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
         
         if (response.data && response.data.user) {
           setUser(response.data.user);
@@ -77,6 +83,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         username,
         password,
         role,
+      }, {
+        withCredentials: true,
+        headers: {
+          'Content-Type': 'application/json'
+        }
       });
 
       const { token, user } = response.data;
@@ -156,7 +167,11 @@ export const useAuth = () => {
 
 // HTTP client with authentication
 export const authAxios = axios.create({
-  baseURL: API_URL
+  baseURL: API_URL,
+  withCredentials: true,
+  headers: {
+    'Content-Type': 'application/json'
+  }
 });
 
 // Add request interceptor to include auth token in all requests

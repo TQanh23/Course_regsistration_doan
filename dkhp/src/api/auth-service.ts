@@ -1,4 +1,4 @@
-import apiClient from './api-client';
+import { axiosInstance } from './api-config';
 
 export interface AuthResponse {
   success: boolean;
@@ -15,29 +15,29 @@ export interface AuthResponse {
 const authService = {
   async checkAuthStatus(): Promise<boolean> {
     try {
-      const token = localStorage.getItem('authToken');
-      if (!token) {
-        return false;
-      }
+        const token = localStorage.getItem('authToken');
+        if (!token) {
+          return false;
+        }
 
-      // Configure axios with token
-      apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      
-      // Validate token with backend
-      const response = await apiClient.get('/auth/me');
-      const userData = response.data.user;
-      
-      if (userData) {
-        // Update stored user data
-        localStorage.setItem('userData', JSON.stringify(userData));
-        // Ensure token is in headers
-        apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-        return true;
-      }
-      
-      // Clear invalid data
-      this.logout();
-      return false;
+        // Configure axios with token
+        axiosInstance.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+        
+        // Validate token with backend
+        const response = await axiosInstance.get('/auth/me');
+        const userData = response.data.user || response.data.data;
+        
+        if (userData) {
+          // Update stored user data
+          localStorage.setItem('userData', JSON.stringify(userData));
+          // Ensure token is in headers
+          axiosInstance.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+          return true;
+        }
+        
+        // If we get here, no valid user data was found
+        await this.logout();
+        return false;
     } catch (error) {
       console.error('Auth check failed:', error);
       // Clear invalid data
@@ -65,25 +65,36 @@ const authService = {
 
   async login(username: string, password: string, role: string = 'admin'): Promise<AuthResponse> {
     try {
-      const response = await apiClient.post('/auth/login', {
+      console.log('Attempting login with:', { username, role });
+      
+      const response = await axiosInstance.post('/auth/login', {
         username,
         password,
         role
       });
 
-      const { token, user } = response.data;
+      // Handle both possible response structures
+      const data = response.data.data || response.data;
+      const { token, user } = data;
       
-      if (token && user) {
-        // Store token
-        localStorage.setItem('authToken', token);
-        // Store user data
-        localStorage.setItem('userData', JSON.stringify(user));
-        // Set authorization header
-        apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-        return response.data;
+      if (!token || !user) {
+        console.error('Invalid response structure:', response.data);
+        throw new Error('Invalid response from server: missing token or user data');
       }
-
-      throw new Error('Invalid response from server');
+      
+      // Store token
+      localStorage.setItem('authToken', token);
+      // Store user data
+      localStorage.setItem('userData', JSON.stringify(user));
+      // Set authorization header
+      axiosInstance.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      
+      return {
+        success: true,
+        token,
+        user,
+        message: 'Login successful'
+      };
     } catch (error: any) {
       console.error('Login failed:', error);
       throw error.response?.data?.message || 'Login failed';
@@ -92,17 +103,17 @@ const authService = {
 
   async logout(): Promise<void> {
     try {
-      await apiClient.post('/auth/logout').catch(() => {});
+      await axiosInstance.post('/auth/logout').catch(() => {});
     } finally {
       localStorage.removeItem('authToken');
       localStorage.removeItem('userData');
-      delete apiClient.defaults.headers.common['Authorization'];
+      delete axiosInstance.defaults.headers.common['Authorization'];
     }
   },
 
   async register(registerData: { username: string; email: string; password: string; role: string }): Promise<void> {
     try {
-      const response = await apiClient.post('/auth/register', registerData);
+      const response = await axiosInstance.post('/auth/register', registerData);
       
       if (!response.data.success) {
         throw new Error(response.data.message || 'Registration failed');

@@ -132,7 +132,23 @@ class AccountController {
         try {
             const { id } = req.params;
             
-            // Try to find in students first
+            if (!id) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'ID tài khoản không được để trống'
+                });
+            }
+
+            // Kiểm tra ID có phải là số hợp lệ
+            const numericId = parseInt(id);
+            if (isNaN(numericId)) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'ID tài khoản không hợp lệ'
+                });
+            }
+            
+            // Tìm kiếm trong bảng sinh viên trước
             const [studentRows] = await pool.query(`
                 SELECT 
                     s.id,
@@ -153,7 +169,7 @@ class AccountController {
                 FROM students s
                 LEFT JOIN academic_programs p ON s.program_id = p.id
                 WHERE s.id = ?
-            `, [id]);
+            `, [numericId]);
             
             if (studentRows.length > 0) {
                 const row = studentRows[0];
@@ -179,7 +195,7 @@ class AccountController {
                 return res.status(200).json({ success: true, data: account });
             }
             
-            // Try to find in admins
+            // Tìm kiếm trong bảng admin
             const [adminRows] = await pool.query(`
                 SELECT 
                     a.id,
@@ -191,7 +207,7 @@ class AccountController {
                     a.password
                 FROM admins a
                 WHERE a.id = ?
-            `, [id]);
+            `, [numericId]);
             
             if (adminRows.length > 0) {
                 const row = adminRows[0];
@@ -209,7 +225,7 @@ class AccountController {
             
             return res.status(404).json({
                 success: false,
-                message: 'Account not found'
+                message: 'Không tìm thấy tài khoản với ID này'
             });
         } catch (error) {
             console.error('Error fetching account:', error);
@@ -409,12 +425,13 @@ class AccountController {
     async updateAccount(req, res) {
         try {
             const { id } = req.params;
-            const { 
-                role, name, email, phone, code, password,
-                dob, major, specialization, faculty,
-                trainingType, universitySystem, classGroup, classSection
-            } = req.body;
-            
+            if (!id) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'ID tài khoản không được để trống'
+                });
+            }
+
             // Check if account exists and get its current role
             const currentAccount = await this.getAccountById(
                 { params: { id } },
@@ -424,50 +441,84 @@ class AccountController {
             if (!currentAccount.success) {
                 return res.status(404).json({
                     success: false,
-                    message: 'Account not found'
+                    message: 'Không tìm thấy tài khoản'
                 });
             }
             
             const currentRole = currentAccount.data.role;
+            const updateData = req.body;
             
             // Prepare update data
-            let updateQuery;
-            let updateParams;
+            let updateQuery = [];
+            let updateParams = [];
             
             if (currentRole === 'Sinh viên') {
-                updateQuery = `
-                    UPDATE students SET 
-                        username = ?, email = ?, student_id = ?, full_name = ?,
-                        date_of_birth = ?, class = ?
-                `;
-                updateParams = [
-                    name, email, code, phone,
-                    dob ? new Date(dob.split('/').reverse().join('-')) : null,
-                    classGroup
-                ];
+                let setClause = [];
                 
-                if (password) {
-                    const hashedPassword = await bcrypt.hash(password, 10);
-                    updateQuery += `, password_student = ?`;
+                if (updateData.name) {
+                    setClause.push('username = ?');
+                    updateParams.push(updateData.name);
+                }
+                if (updateData.email) {
+                    setClause.push('email = ?');
+                    updateParams.push(updateData.email);
+                }
+                if (updateData.code) {
+                    setClause.push('student_id = ?');
+                    updateParams.push(updateData.code);
+                }
+                if (updateData.phone) {
+                    setClause.push('full_name = ?');
+                    updateParams.push(updateData.phone);
+                }
+                if (updateData.dob) {
+                    setClause.push('date_of_birth = ?');
+                    updateParams.push(new Date(updateData.dob.split('/').reverse().join('-')));
+                }
+                if (updateData.classGroup) {
+                    setClause.push('class = ?');
+                    updateParams.push(updateData.classGroup);
+                }
+                if (updateData.password) {
+                    const hashedPassword = await bcrypt.hash(updateData.password, 10);
+                    setClause.push('password_student = ?');
                     updateParams.push(hashedPassword);
                 }
                 
-                updateQuery += ` WHERE id = ?`;
+                if (setClause.length === 0) {
+                    return res.status(400).json({
+                        success: false,
+                        message: 'Không có thông tin nào được cập nhật'
+                    });
+                }
+                
+                updateQuery = `UPDATE students SET ${setClause.join(', ')} WHERE id = ?`;
                 updateParams.push(id);
             } else {
-                updateQuery = `
-                    UPDATE admins SET 
-                        username = ?, email = ?
-                `;
-                updateParams = [name, email];
+                let setClause = [];
                 
-                if (password) {
-                    const hashedPassword = await bcrypt.hash(password, 10);
-                    updateQuery += `, password = ?`;
+                if (updateData.name) {
+                    setClause.push('username = ?');
+                    updateParams.push(updateData.name);
+                }
+                if (updateData.email) {
+                    setClause.push('email = ?');
+                    updateParams.push(updateData.email);
+                }
+                if (updateData.password) {
+                    const hashedPassword = await bcrypt.hash(updateData.password, 10);
+                    setClause.push('password = ?');
                     updateParams.push(hashedPassword);
                 }
                 
-                updateQuery += ` WHERE id = ?`;
+                if (setClause.length === 0) {
+                    return res.status(400).json({
+                        success: false,
+                        message: 'Không có thông tin nào được cập nhật'
+                    });
+                }
+                
+                updateQuery = `UPDATE admins SET ${setClause.join(', ')} WHERE id = ?`;
                 updateParams.push(id);
             }
             
@@ -507,31 +558,103 @@ class AccountController {
         try {
             const { id } = req.params;
             
-            // Check if account exists and get its role
-            const currentAccount = await this.getAccountById(
-                { params: { id } },
-                { status: () => ({ json: (data) => data }) }
-            );
-            
-            if (!currentAccount.success) {
-                return res.status(404).json({
+            if (!id) {
+                return res.status(400).json({
                     success: false,
-                    message: 'Account not found'
+                    message: 'ID tài khoản không được để trống'
+                });
+            }
+
+            // Kiểm tra ID có phải là số hợp lệ
+            const numericId = parseInt(id);
+            if (isNaN(numericId)) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'ID tài khoản không hợp lệ'
                 });
             }
             
-            const currentRole = currentAccount.data.role;
+            console.log(`Đang thực hiện xóa tài khoản với ID: ${numericId}`);
             
-            // Delete from appropriate table
-            if (currentRole === 'Sinh viên') {
-                await pool.query('DELETE FROM students WHERE id = ?', [id]);
+            // Kiểm tra tài khoản tồn tại trong cả hai bảng
+            const [studentCheck] = await pool.query('SELECT id, "Student" as role FROM students WHERE id = ?', [numericId]);
+            const [adminCheck] = await pool.query('SELECT id, "Admin" as role FROM admins WHERE id = ?', [numericId]);
+            
+            let accountRole = null;
+            if (studentCheck.length > 0) {
+                accountRole = 'Student';
+            } else if (adminCheck.length > 0) {
+                accountRole = 'Admin';
             } else {
-                await pool.query('DELETE FROM admins WHERE id = ?', [id]);
+                return res.status(404).json({
+                    success: false,
+                    message: 'Không tìm thấy tài khoản với ID này'
+                });
+            }
+            
+            console.log(`Đã tìm thấy tài khoản với vai trò: ${accountRole}`);
+            
+            // Xử lý xóa tài khoản sinh viên
+            if (accountRole === 'Student') {
+                // Kiểm tra đăng ký môn học đang hoạt động
+                const [activeRegistrations] = await pool.query(
+                    `SELECT COUNT(*) as count 
+                     FROM registrations r 
+                     JOIN course_offerings co ON r.course_offering_id = co.id 
+                     JOIN academic_terms at ON co.term_id = at.id 
+                     WHERE r.student_id = ? 
+                     AND r.registration_status = 'enrolled'
+                     AND at.end_date > CURDATE()`,
+                    [numericId]
+                );
+
+                if (activeRegistrations[0].count > 0) {
+                    return res.status(400).json({
+                        success: false,
+                        message: `Không thể xóa sinh viên vì còn ${activeRegistrations[0].count} môn học đang đăng ký. Vui lòng hoàn thành hoặc hủy đăng ký trước.`
+                    });
+                }
+
+                // Bắt đầu transaction
+                await pool.query('START TRANSACTION');
+
+                try {
+                    console.log('Đang xóa các bản ghi liên quan của sinh viên...');
+                    // Xóa các bản ghi liên quan trước
+                    await pool.query('DELETE FROM student_class_schedule WHERE student_id = ?', [numericId]);
+                    await pool.query('DELETE FROM registrations WHERE student_id = ?', [numericId]);
+                    
+                    // Cuối cùng xóa sinh viên
+                    const [deleteResult] = await pool.query('DELETE FROM students WHERE id = ?', [numericId]);
+                    console.log(`Kết quả xóa:`, deleteResult);
+                    
+                    // Commit transaction
+                    await pool.query('COMMIT');
+                    console.log('Đã xóa tài khoản sinh viên thành công');
+                } catch (error) {
+                    // Rollback khi có lỗi
+                    await pool.query('ROLLBACK');
+                    console.error('Lỗi trong quá trình thực hiện transaction:', error);
+                    throw error;
+                }
+            } else {
+                // Kiểm tra nếu là admin cuối cùng
+                const [adminCount] = await pool.query('SELECT COUNT(*) as count FROM admins');
+                if (adminCount[0].count <= 1) {
+                    return res.status(400).json({
+                        success: false,
+                        message: 'Không thể xóa tài khoản admin cuối cùng'
+                    });
+                }
+                
+                console.log('Đang xóa tài khoản admin...');
+                const [deleteResult] = await pool.query('DELETE FROM admins WHERE id = ?', [numericId]);
+                console.log(`Kết quả xóa admin:`, deleteResult);
             }
             
             return res.status(200).json({
                 success: true,
-                message: 'Account deleted successfully'
+                message: 'Đã xóa tài khoản thành công'
             });
         } catch (error) {
             console.error('Error deleting account:', error);

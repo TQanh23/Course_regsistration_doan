@@ -81,7 +81,8 @@ const createCourse = async (req, res) => {
       description, 
       credits, 
       category_id, 
-      max_capacity
+      max_capacity,
+      is_non_cumulative
     } = req.body;
     
     // Get admin ID from authenticated user
@@ -126,8 +127,8 @@ const createCourse = async (req, res) => {
     // Insert the new course
     const [result] = await pool.query(
       `INSERT INTO courses 
-        (code, title, description, credits, category_id, max_capacity, created_by) 
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        (code, title, description, credits, category_id, max_capacity, created_by, is_non_cumulative) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         code, 
         title, 
@@ -135,7 +136,8 @@ const createCourse = async (req, res) => {
         credits, 
         category_id || null, 
         max_capacity || 30, 
-        adminId
+        adminId,
+        is_non_cumulative || false
       ]
     );
     
@@ -177,7 +179,8 @@ const updateCourse = async (req, res) => {
       credits, 
       category_id, 
       max_capacity,
-      active
+      active,
+      is_non_cumulative
     } = req.body;
     
     // Check if course exists
@@ -261,6 +264,11 @@ const updateCourse = async (req, res) => {
     if (active !== undefined) {
       updateFields.push('active = ?');
       updateValues.push(active);
+    }
+
+    if (is_non_cumulative !== undefined) {
+      updateFields.push('is_non_cumulative = ?');
+      updateValues.push(is_non_cumulative);
     }
     
     // If no fields to update

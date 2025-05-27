@@ -1,19 +1,23 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import './QuanLyTaiKhoan.css';
-import { FaSearch, FaEllipsisH, FaUserPlus, FaSortAlphaDown, FaSortAlphaUp, FaFilter, FaTimes, FaGraduationCap, FaUserCog } from 'react-icons/fa';
 import { 
-  IconButton, 
   Menu, 
   MenuItem, 
   ListItemIcon, 
   ListItemText 
 } from '@mui/material';
 import { 
-  Visibility as VisibilityIcon,
+  FaSearch,
+  FaSortAlphaDown,
+  FaSortAlphaUp
+} from 'react-icons/fa';
+import {
   Edit as EditIcon,
-  Delete as DeleteIcon
+  Delete as DeleteIcon,
+  Visibility as VisibilityIcon
 } from '@mui/icons-material';
+import { accountService, CreateAccountData } from '../../services/accountService';
+import './QuanLyTaiKhoan.css';
 
 // Sample data to match what's in the image
 const initialAccounts = [
@@ -338,31 +342,56 @@ const QuanLyTaiKhoan: React.FC = () => {
     }));
   };
   
-  const handleCreateAccount = () => {
+  const handleCreateAccount = async () => {
+    // Validate form data
+    if (!validateForm(formData, selectedRole)) {
+      return;
+    }
 
-    // Tạo account mới với đầy đủ thông tin
-    const newAccount: Account = {
-      id: accounts.length + 1,
-      name: formData.name,
-      phone: formData.phone,
-      email: formData.email,
-      code: formData.code,
-      role: selectedRole,
-      password: formData.password,
-      studentDetails: selectedRole === 'Sinh viên' ? {
-        dob: formData.dob,
-        major: formData.major,
-        specialization: formData.specialization,
-        faculty: formData.faculty,
-        trainingType: formData.trainingType,
-        universitySystem: formData.universitySystem,
-        classGroup: formData.classGroup,
-        classSection: formData.classSection,
-      } : undefined
-    };
-  
-    setAccounts([...accounts, newAccount]);
-    setShowCreateModal(false);
+    try {
+      const createData: CreateAccountData = {
+        username: formData.name,
+        password: formData.password,
+        email: formData.email,
+        role: selectedRole === 'Admin' ? 'admin' : 'student',
+        phone: formData.phone
+      };
+
+      // Add student details if account is student type
+      if (selectedRole === 'Sinh viên') {
+        createData.studentDetails = {
+          dob: formData.dob,
+          major: formData.major,
+          specialization: formData.specialization,
+          faculty: formData.faculty,
+          trainingType: formData.trainingType,
+          universitySystem: formData.universitySystem,
+          classGroup: formData.classGroup,
+          classSection: formData.classSection
+        };
+      }
+
+      const newAccount = await accountService.createAccount(createData);
+
+      // Add the new account to the state
+      setAccounts(prev => [...prev, {
+        id: newAccount.id,
+        name: newAccount.name,
+        phone: newAccount.phone || '',
+        email: newAccount.email,
+        code: newAccount.code,
+        role: newAccount.role,
+        studentDetails: newAccount.studentDetails
+      }]);
+
+      // Close modal and show success message
+      setShowCreateModal(false);
+      // You may want to add a toast or notification here
+    } catch (error: any) {
+      console.error('Error creating account:', error);
+      // Show error message to user
+      // You may want to add error handling UI here
+    }
   };
   
   // Back to role selection
