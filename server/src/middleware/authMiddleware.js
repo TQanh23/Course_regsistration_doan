@@ -2,10 +2,8 @@
 const jwt = require('jsonwebtoken');
 const pool = require('../config/db');
 
-/**
- * Middleware to authenticate JWT token
- */
-exports.authenticateToken = async (req, res, next) => {
+// Export both the original name and the alias for backwards compatibility
+exports.verifyToken = exports.authenticateToken = async (req, res, next) => {
   try {
     // Get token from Authorization header
     const authHeader = req.headers.authorization;
@@ -85,7 +83,7 @@ exports.isAdmin = (req, res, next) => {
     });
   }
   
-  if (req.user.role !== 'admin') {
+  if (req.user.role.toLowerCase() !== 'admin') {
     return res.status(403).json({
       success: false,
       message: 'Access denied. Admin privileges required.'

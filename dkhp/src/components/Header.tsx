@@ -1,15 +1,28 @@
 import React, { useState } from 'react';
-import { Menu, MenuItem, Avatar } from '@mui/material';
-import { useNavigate } from 'react-router-dom'; // Thêm dòng này
+import { Menu, MenuItem, PopoverOrigin } from '@mui/material';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../api/AuthContext';
 
 interface HeaderProps {
-  title?: string; // Tham số tùy chọn cho tiêu đề 
+  title?: string;
 }
+
+const menuPosition = {
+  anchorOrigin: {
+    vertical: 'bottom',
+    horizontal: 'right',
+  } as PopoverOrigin,
+  transformOrigin: {
+    vertical: 'top',
+    horizontal: 'right',
+  } as PopoverOrigin,
+};
 
 const Header: React.FC<HeaderProps> = ({ title = "Welcome to HUCE for admin" }) => {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
-  const navigate = useNavigate(); // Thêm dòng này
+  const navigate = useNavigate();
+  const { logout } = useAuth();
 
   const handleClick = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
@@ -24,10 +37,20 @@ const Header: React.FC<HeaderProps> = ({ title = "Welcome to HUCE for admin" }) 
     navigate('/thong-tin-ca-nhan');
   };
   
-  // Thêm hàm xử lý cho đổi mật khẩu
   const handleDoiMatKhau = () => {
     handleClose();
     navigate('/doi-mat-khau');
+  };
+  
+  const handleLogout = async () => {
+    try {
+      handleClose();
+      await logout();
+      navigate('/login', { replace: true });
+    } catch (error) {
+      console.error('Logout error:', error);
+      // You could show an error message to the user here
+    }
   };
 
   return (
@@ -44,43 +67,40 @@ const Header: React.FC<HeaderProps> = ({ title = "Welcome to HUCE for admin" }) 
           anchorEl={anchorEl}
           open={open}
           onClose={handleClose}
-          slotProps={{
-            paper: {
-              elevation: 3,
-              sx: {
-                overflow: 'visible',
-                filter: 'drop-shadow(0px 2px 8px rgba(0,0,0,0.1))',
-                mt: 1.5,
-                borderRadius: 2,
-                width: 280,
-                '& .MuiMenuItem-root': {
-                  padding: 2,
-                  fontSize: 18,
-                  fontWeight: 600,
-                  color: '#0066cc',
-                  justifyContent: 'center',
-                  height: 50,
-                  userSelect: 'none',
-                  backgroundColor: '#fff !important', // Luôn nền trắng
-                  '&.Mui-selected': {
-                    backgroundColor: '#fff !important',
-                  },
-                  '&.Mui-focusVisible': {
-                    backgroundColor: '#fff !important',
-                  },
-                  '&:hover': {
-                    backgroundColor: '#f5f5f5 !important', // hoặc #fff nếu muốn không đổi màu khi hover
-                  },
+          {...menuPosition}
+          PaperProps={{
+            elevation: 3,
+            sx: {
+              overflow: 'visible',
+              filter: 'drop-shadow(0px 2px 8px rgba(0,0,0,0.1))',
+              mt: 1.5,
+              borderRadius: 2,
+              width: 280,
+              '& .MuiMenuItem-root': {
+                padding: 2,
+                fontSize: 18,
+                fontWeight: 600,
+                color: '#0066cc',
+                justifyContent: 'center',
+                height: 50,
+                userSelect: 'none',
+                backgroundColor: '#fff !important',
+                '&.Mui-selected': {
+                  backgroundColor: '#fff !important',
+                },
+                '&.Mui-focusVisible': {
+                  backgroundColor: '#fff !important',
+                },
+                '&:hover': {
+                  backgroundColor: '#f5f5f5 !important',
                 },
               },
             },
           }}
-          transformOrigin={{ horizontal: 'right', vertical: 'top' }}
-          anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
         >
           <MenuItem onClick={handleThongTinCaNhan} disableGutters>Thông tin cá nhân</MenuItem>
           <MenuItem onClick={handleDoiMatKhau} disableGutters>Đổi mật khẩu</MenuItem>
-          <MenuItem onClick={handleClose} disableGutters>Đăng xuất</MenuItem>
+          <MenuItem onClick={handleLogout} disableGutters>Đăng xuất</MenuItem>
         </Menu>
       </div>
     </header>

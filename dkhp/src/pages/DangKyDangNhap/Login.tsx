@@ -1,16 +1,36 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import '../App.css'
+import '../../App.css'
 import React from 'react'
+import { useNavigate } from 'react-router-dom'
+import authService from '../../api/auth-service'
 
 function Login() {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
+  const navigate = useNavigate()
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
-    // Xử lý đăng nhập ở đây
-    console.log('Login attempt:', { username, password })
+    setError('')
+
+    if (!username || !password) {
+      setError('Vui lòng điền đầy đủ thông tin')
+      return
+    }
+
+    try {
+      const response = await authService.login(username, password, 'admin')
+      if (response.success) {
+        // Login successful, navigate to home
+        navigate('/trang-chu')
+      } else {
+        setError(response.message || 'Đăng nhập thất bại')
+      }
+    } catch (err: any) {
+      setError(err.toString())
+    }
   }
 
   const isFormValid = username.trim() !== '' && password.trim() !== ''
@@ -22,6 +42,12 @@ function Login() {
           <img src="/huce-logo.png" alt="HUCE Logo" />
         </div>
         <h1 style={{ fontSize: '35px' }}>Welcome to HUCE</h1>
+
+        {error && (
+          <div className="error-message" style={{ color: 'red', marginBottom: '10px' }}>
+            {error}
+          </div>
+        )}
         
         <form onSubmit={handleLogin}>
           <div className="input-field">
@@ -44,7 +70,7 @@ function Login() {
             </div>
             <input
               type="password"
-              id="password"
+              id="password" 
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder=" "

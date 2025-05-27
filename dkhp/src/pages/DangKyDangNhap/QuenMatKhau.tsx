@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import '../App.css';
+import '../../App.css';
 
 function QuenMatKhau() {
   const [email, setEmail] = useState('');
@@ -24,8 +24,8 @@ function QuenMatKhau() {
     // Handle password recovery request
     console.log('Password recovery request for:', email);
     
-    // Navigate to verification page
-    navigate('/verify-email-1', { state: { email } });
+    // Navigate to verification page with email as query parameter
+    navigate(`/verify-email-1?email=${encodeURIComponent(email)}`);
   };
 
   // Check if email is valid for button state

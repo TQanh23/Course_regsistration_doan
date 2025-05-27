@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import '../App.css';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import '../../App.css';
 
 function XacNhanEmail() {
   const navigate = useNavigate();
@@ -12,10 +12,33 @@ function XacNhanEmail() {
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const timerRef = useRef<number | null>(null);
   
-  // Sample email - in a real app, this would come from props or context
-  const maskedEmail = "lm****************@gmail.com";
+  // Get email from navigation state
+  const [email, setEmail] = useState("");
+  
+  // Function to mask email (show first 2 chars and domain)
+  const getMaskedEmail = (email: string) => {
+    if (!email) return "";
+    const atIndex = email.indexOf('@');
+    if (atIndex <= 2) return email; // Don't mask if email is too short
+    
+    return email.substring(0, 2) + 
+           '*'.repeat(atIndex - 2) + 
+           email.substring(atIndex);
+  };
+  
+  // Get the masked version of the email
+  const maskedEmail = getMaskedEmail(email);
   
   useEffect(() => {
+    // Get email from location state if available
+    const location = window.location;
+    const searchParams = new URLSearchParams(location.search);
+    const emailParam = searchParams.get('email');
+    
+    if (emailParam) {
+      setEmail(emailParam);
+    }
+    
     // Focus the first input on component mount
     if (inputRefs.current[0]) {
       inputRefs.current[0].focus();
@@ -32,7 +55,8 @@ function XacNhanEmail() {
   // Separate effect for managing the countdown
   useEffect(() => {
     if (timerActive) {
-      timerRef.current = setInterval(() => {
+      if (timerRef.current) clearInterval(timerRef.current);
+      timerRef.current = window.setInterval(() => {
         setCountdown((prevCountdown) => {
           if (prevCountdown <= 1) {
             setIsResendDisabled(false);
@@ -93,7 +117,8 @@ function XacNhanEmail() {
     console.log('Verifying code:', code);
     
     // Immediately navigate to TaoMatKhauMoi page without verification
-    navigate('/tao-mat-khau-moi');
+    // Pass the email to the next page
+    navigate(`/tao-mat-khau-moi?email=${email}`);
   };
 
   // Add this const to determine if all verification code fields are filled
