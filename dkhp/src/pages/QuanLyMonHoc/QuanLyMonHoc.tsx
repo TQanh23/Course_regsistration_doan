@@ -1,16 +1,17 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import './QuanLyMonHoc.css';
+import { Course, CourseCategory } from './types';
 import { FaSearch, FaSortAlphaDown, FaSortAlphaUp, FaEllipsisH } from 'react-icons/fa';
 import Select from 'react-select';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  IconButton, 
-  Menu, 
-  MenuItem, 
-  ListItemIcon, 
-  ListItemText 
+import {
+  IconButton,
+  Menu,
+  MenuItem,
+  ListItemIcon,
+  ListItemText
 } from '@mui/material';
-import { 
+import {
   Visibility as VisibilityIcon,
   Edit as EditIcon,
   Delete as DeleteIcon
@@ -90,7 +91,7 @@ const QuanLyMonHoc: React.FC = () => {
   const [searchFilter, setSearchFilter] = useState<SearchFilter>('tenNganh');
   const [sortDirection, setSortDirection] = useState<SortDirection>('none');
   const [khoanFilter, setKhoaFilter] = useState<string>('all');
-  
+
   // Menu state
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [selectedNganhId, setSelectedNganhId] = useState<number | null>(null);
@@ -99,7 +100,7 @@ const QuanLyMonHoc: React.FC = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showAddConfirm, setShowAddConfirm] = useState(false);
   const [showBacDaiHocConfirm, setShowBacDaiHocConfirm] = useState(false);
-  
+
   // Form data for new major
   const [formData, setFormData] = useState({
     maNganh: '',
@@ -125,16 +126,16 @@ const QuanLyMonHoc: React.FC = () => {
   const [showHocKyButton, setShowHocKyButton] = useState(false);
 
   // Add this to your state variables
-  const [createdChuyenNganhs, setCreatedChuyenNganhs] = useState<{id: number, name: string}[]>([]);
+  const [createdChuyenNganhs, setCreatedChuyenNganhs] = useState<{ id: number, name: string }[]>([]);
   const [selectedChuyenNganhId, setSelectedChuyenNganhId] = useState<number | null>(null);
 
   // Add these state variables for bachelor degree management
-  const [createdBacDaiHocs, setCreatedBacDaiHocs] = useState<{id: number, ten: string, soTinChi: number}[]>([]);
+  const [createdBacDaiHocs, setCreatedBacDaiHocs] = useState<{ id: number, ten: string, soTinChi: number }[]>([]);
   const [selectedBacDaiHocId, setSelectedBacDaiHocId] = useState<number | null>(null);
 
   // First, update the state to track bachelor degrees per specialized major
   const [bacDaiHocByChuyenNganh, setBacDaiHocByChuyenNganh] = useState<{
-    [chuyenNganhId: number]: {id: number, ten: string, soTinChi: number}[]
+    [chuyenNganhId: number]: { id: number, ten: string, soTinChi: number }[]
   }>({});
 
   // Add these new state variables
@@ -176,7 +177,7 @@ const QuanLyMonHoc: React.FC = () => {
   const [editingMajorDetails, setEditingMajorDetails] = useState<MajorDetails | null>(null);
 
   // Add new state variables for managing specialized majors in the form
-  const [availableSpecializations, setAvailableSpecializations] = useState<Array<{id: number, name: string}>>([]);
+  const [availableSpecializations, setAvailableSpecializations] = useState<Array<{ id: number, name: string }>>([]);
   const [selectedSpecializationId, setSelectedSpecializationId] = useState<number | null>(null);
 
 
@@ -187,21 +188,21 @@ const QuanLyMonHoc: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch data khi component mount
+  // Cho việc test cơ chế môn học
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
         setError(null);
-        
+
         const response = await courseManagementApi.getAllCourses();
         if (response.success) {
           // Map Course[] to NganhHoc[]
           const mappedData: NganhHoc[] = response.data.map(course => ({
             id: course.id,
-            maNganh: course.code || '',
+            maNganh: course.course_code || '',
             tenNganh: course.title || '',
-            khoa: course.department || ''
+            khoa: course.category_name || ''
           }));
           setNganhHocList(mappedData);
         }
@@ -215,6 +216,36 @@ const QuanLyMonHoc: React.FC = () => {
     fetchData();
   }, [selectedNganhId]);
 
+    // Đây mới là cách chiêu hồi đúng theo logic
+    // useEffect(() => {
+    //   const fetchData = async () => {
+    //     try {
+    //       setLoading(true);
+    //       setError(null);
+
+    //       // Đổi sang lấy categories thay vì courses
+    //       const response = await courseManagementApi.getCategories();
+    //       if (response.success) {
+    //         const mappedData: NganhHoc[] = response.data.map(category => ({
+    //           id: category.id,
+    //           maNganh: category.id.toString(), // hoặc category.code nếu có
+    //           tenNganh: category.name,
+    //           khoa: 'Công nghệ thông tin' // Giả sử khoa là 'Công nghệ thông tin'
+    //         }));
+    //         setNganhHocList(mappedData);
+    //       }
+    //     } catch (err: any) {
+    //       setError(err.message);
+    //     } finally {
+    //       setLoading(false);
+    //     }
+    //   };
+
+    //   fetchData();
+    // }, []);
+
+
+
   // Enhanced reset function to clear all data
   const resetAllData = () => {
     // Reset form data for ngành (major)
@@ -223,7 +254,7 @@ const QuanLyMonHoc: React.FC = () => {
       tenNganh: '',
       khoa: ''
     });
-    
+
     // Reset chuyên ngành (specialized major) data
     setChuyenNganhName('');
     setChuyenNganhList([]);
@@ -233,7 +264,7 @@ const QuanLyMonHoc: React.FC = () => {
     setShowChuyenNganhForm(false);
     setShowChuyenNganhConfirm(false);
     setShowBacDaiHocButton(false);
-    
+
     // Reset bậc đại học (bachelor degree) data
     setBacDaiHocData({
       ten: '',
@@ -244,11 +275,11 @@ const QuanLyMonHoc: React.FC = () => {
     setSelectedBacDaiHocId(null);
     setShowBacDaiHocForm(false);
     setShowBacDaiHocConfirm(false);
-    
+
     // Reset học kỳ (semester) data
     setShowHocKyButton(false);
     setHocKyByBacDaiHoc({});
-    
+
     // Reset môn học (course) data
     setMonHocData({
       id: 0,
@@ -262,7 +293,7 @@ const QuanLyMonHoc: React.FC = () => {
     setCreditError(null);
     setEditingMonHocId(null);
     setEditingHocKyId(null);
-    
+
     // Reset any editing states
     setEditingChuyenNganhId(null);
     setEditingBacDaiHocId(null);
@@ -311,7 +342,7 @@ const QuanLyMonHoc: React.FC = () => {
     resetAllData();
     setShowAddModal(true);
   };
-  
+
   // Update handleCloseAddModal to use resetAllData
   const handleCloseAddModal = () => {
     resetAllData();
@@ -319,12 +350,12 @@ const QuanLyMonHoc: React.FC = () => {
   };
 
   // Thêm hàm đóng modal chỉnh sửa
-const handleCloseEditModal = () => {
-  setShowEditModal(false);
-  setEditingNganhId(null);
-  resetAllData();
-};
-  
+  const handleCloseEditModal = () => {
+    setShowEditModal(false);
+    setEditingNganhId(null);
+    resetAllData();
+  };
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({
@@ -332,35 +363,35 @@ const handleCloseEditModal = () => {
       [name]: value
     }));
   };
-  
+
   const handleAddChuyenNganh = () => {
     setShowChuyenNganhForm(true);
     setChuyenNganhName('');
   };
-  
+
   const handleChuyenNganhNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setChuyenNganhName(e.target.value);
   };
-  
+
   // Update all cancel handlers to use resetAllData
   const handleChuyenNganhCancel = () => {
     setChuyenNganhName('');
     setShowChuyenNganhForm(false);
     setEditingChuyenNganhId(null);
   };
-  
+
   const handleChuyenNganhConfirmOpen = () => {
     // Only proceed if name is entered
     if (chuyenNganhName.trim()) {
       setShowChuyenNganhConfirm(true);
     }
   };
-  
+
   // For cancel buttons in confirmation modals
   const handleChuyenNganhConfirmClose = () => {
     setShowChuyenNganhConfirm(false);
   };
-  
+
   // Update handleChuyenNganhCreate to reset bachelor degree data
   const handleChuyenNganhCreate = () => {
     if (editingChuyenNganhId !== null) {
@@ -397,7 +428,7 @@ const handleCloseEditModal = () => {
         );
         // If the edited specialization was the currently selected one in the dropdown, ensure it stays selected
         if (selectedSpecializationId === editingChuyenNganhId) {
-             // No need to change selectedSpecializationId here, just ensure the label updates
+          // No need to change selectedSpecializationId here, just ensure the label updates
         }
       }
 
@@ -458,60 +489,60 @@ const handleCloseEditModal = () => {
     setShowChuyenNganhConfirm(false);
     setShowChuyenNganhForm(false);
   };
-  
+
   const handleConfirmAdd = () => {
     // Create new major
-  const newNganhId = nganhHocList.length + 1;
-  const newNganh: NganhHoc = {
-    id: newNganhId,
-    maNganh: formData.maNganh,
-    tenNganh: formData.tenNganh,
-    khoa: formData.khoa
-  };
-  
-  // Add to list
-  setNganhHocList([...nganhHocList, newNganh]);
-  
-  // Tạo dữ liệu chi tiết về ngành
-  if (selectedChuyenNganhId && confirmedChuyenNganh) {
-    // Tạo danh sách bậc đào tạo
-    const bacDaoTaoList: BacDaoTao[] = [];
-    
-    // Lấy dữ liệu của bậc đại học đã tạo
-    const bacDaiHocsList = bacDaiHocByChuyenNganh[selectedChuyenNganhId] || [];
-    
-    // Chuyển đổi từ danh sách bậc đại học sang định dạng BacDaoTao
-    bacDaiHocsList.forEach(bacDH => {
-      const hocKyList = hocKyByBacDaiHoc[bacDH.id] || [];
-      
-      bacDaoTaoList.push({
-        id: bacDH.id,
-        tenBac: bacDH.ten,
-        tongTinChi: bacDH.soTinChi,
-        hocKyList: hocKyList
-      });
-    });
-    
-    // Tạo đối tượng MajorDetails
-    const newMajorDetails: MajorDetails = {
+    const newNganhId = nganhHocList.length + 1;
+    const newNganh: NganhHoc = {
       id: newNganhId,
       maNganh: formData.maNganh,
       tenNganh: formData.tenNganh,
-      khoa: formData.khoa,
-      chuyenNganh: confirmedChuyenNganh,
-      bacDaoTaoList: bacDaoTaoList
+      khoa: formData.khoa
     };
-    
-    // Thêm vào majorDetailsDataStore
-    const existingDetails = majorDetailsDataStore[formData.maNganh] || [];
-    majorDetailsDataStore[formData.maNganh] = [...existingDetails, newMajorDetails];
-    
-    console.log('Đã lưu chi tiết ngành:', newMajorDetails);
-  }
-  
-  setShowAddConfirm(false);
-  setShowAddModal(false);
-  resetAllData();
+
+    // Add to list
+    setNganhHocList([...nganhHocList, newNganh]);
+
+    // Tạo dữ liệu chi tiết về ngành
+    if (selectedChuyenNganhId && confirmedChuyenNganh) {
+      // Tạo danh sách bậc đào tạo
+      const bacDaoTaoList: BacDaoTao[] = [];
+
+      // Lấy dữ liệu của bậc đại học đã tạo
+      const bacDaiHocsList = bacDaiHocByChuyenNganh[selectedChuyenNganhId] || [];
+
+      // Chuyển đổi từ danh sách bậc đại học sang định dạng BacDaoTao
+      bacDaiHocsList.forEach(bacDH => {
+        const hocKyList = hocKyByBacDaiHoc[bacDH.id] || [];
+
+        bacDaoTaoList.push({
+          id: bacDH.id,
+          tenBac: bacDH.ten,
+          tongTinChi: bacDH.soTinChi,
+          hocKyList: hocKyList
+        });
+      });
+
+      // Tạo đối tượng MajorDetails
+      const newMajorDetails: MajorDetails = {
+        id: newNganhId,
+        maNganh: formData.maNganh,
+        tenNganh: formData.tenNganh,
+        khoa: formData.khoa,
+        chuyenNganh: confirmedChuyenNganh,
+        bacDaoTaoList: bacDaoTaoList
+      };
+
+      // Thêm vào majorDetailsDataStore
+      const existingDetails = majorDetailsDataStore[formData.maNganh] || [];
+      majorDetailsDataStore[formData.maNganh] = [...existingDetails, newMajorDetails];
+
+      console.log('Đã lưu chi tiết ngành:', newMajorDetails);
+    }
+
+    setShowAddConfirm(false);
+    setShowAddModal(false);
+    resetAllData();
   };
 
   const handleConfirmEdit = () => {
@@ -520,18 +551,18 @@ const handleCloseEditModal = () => {
     // 1. Update basic major info in the list
     const updatedNganhList = nganhHocList.map(nganh =>
       nganh.id === editingNganhId ?
-      { ...nganh, maNganh: formData.maNganh, tenNganh: formData.tenNganh, khoa: formData.khoa } :
-      nganh
+        { ...nganh, maNganh: formData.maNganh, tenNganh: formData.tenNganh, khoa: formData.khoa } :
+        nganh
     );
     setNganhHocList(updatedNganhList);
 
     // 2. Prepare the updated/new MajorDetails data
     const currentSpecializationId = selectedSpecializationId; // ID of the specialization being worked on
     if (!currentSpecializationId) {
-        console.error("No specialization selected for saving.");
-        // Optionally handle this error, maybe prevent saving
-        setShowEditConfirm(false);
-        return;
+      console.error("No specialization selected for saving.");
+      // Optionally handle this error, maybe prevent saving
+      setShowEditConfirm(false);
+      return;
     }
 
     // Build the BacDaoTao list for the current specialization being edited
@@ -539,13 +570,13 @@ const handleCloseEditModal = () => {
     const currentBacDaiHocs = bacDaiHocByChuyenNganh[selectedChuyenNganhId || -1] || createdBacDaiHocs; // Get the correct list
 
     currentBacDaiHocs.forEach(bacDH => {
-        const hocKyList = hocKyByBacDaiHoc[bacDH.id] || [];
-        updatedBacDaoTaoList.push({
-            id: bacDH.id, // Use the ID from the bachelor degree state
-            tenBac: bacDH.ten,
-            tongTinChi: bacDH.soTinChi,
-            hocKyList: hocKyList
-        });
+      const hocKyList = hocKyByBacDaiHoc[bacDH.id] || [];
+      updatedBacDaoTaoList.push({
+        id: bacDH.id, // Use the ID from the bachelor degree state
+        tenBac: bacDH.ten,
+        tongTinChi: bacDH.soTinChi,
+        hocKyList: hocKyList
+      });
     });
 
 
@@ -557,31 +588,31 @@ const handleCloseEditModal = () => {
     const existingDetailIndex = detailsArray.findIndex(d => d.id === currentSpecializationId);
 
     if (existingDetailIndex !== -1) {
-        // *** Update Existing Specialization Detail ***
-        const updatedDetail: MajorDetails = {
-            ...detailsArray[existingDetailIndex], // Start with existing data
-            maNganh: formData.maNganh,
-            tenNganh: formData.tenNganh,
-            khoa: formData.khoa,
-            chuyenNganh: confirmedChuyenNganh, // Use the confirmed name
-            bacDaoTaoList: updatedBacDaoTaoList
-        };
-        detailsArray[existingDetailIndex] = updatedDetail;
-        console.log("Đã cập nhật dữ liệu chi tiết chuyên ngành (ID:", currentSpecializationId, "):", updatedDetail);
+      // *** Update Existing Specialization Detail ***
+      const updatedDetail: MajorDetails = {
+        ...detailsArray[existingDetailIndex], // Start with existing data
+        maNganh: formData.maNganh,
+        tenNganh: formData.tenNganh,
+        khoa: formData.khoa,
+        chuyenNganh: confirmedChuyenNganh, // Use the confirmed name
+        bacDaoTaoList: updatedBacDaoTaoList
+      };
+      detailsArray[existingDetailIndex] = updatedDetail;
+      console.log("Đã cập nhật dữ liệu chi tiết chuyên ngành (ID:", currentSpecializationId, "):", updatedDetail);
 
     } else {
-        // *** Add New Specialization Detail ***
-        // This case happens if a new specialization was added during the edit session
-        const newMajorDetails: MajorDetails = {
-            id: currentSpecializationId, // Use the ID of the new specialization
-            maNganh: formData.maNganh,
-            tenNganh: formData.tenNganh,
-            khoa: formData.khoa,
-            chuyenNganh: confirmedChuyenNganh, // Use the confirmed name
-            bacDaoTaoList: updatedBacDaoTaoList
-        };
-        detailsArray.push(newMajorDetails);
-        console.log("Đã thêm dữ liệu chi tiết chuyên ngành mới (ID:", currentSpecializationId, "):", newMajorDetails);
+      // *** Add New Specialization Detail ***
+      // This case happens if a new specialization was added during the edit session
+      const newMajorDetails: MajorDetails = {
+        id: currentSpecializationId, // Use the ID of the new specialization
+        maNganh: formData.maNganh,
+        tenNganh: formData.tenNganh,
+        khoa: formData.khoa,
+        chuyenNganh: confirmedChuyenNganh, // Use the confirmed name
+        bacDaoTaoList: updatedBacDaoTaoList
+      };
+      detailsArray.push(newMajorDetails);
+      console.log("Đã thêm dữ liệu chi tiết chuyên ngành mới (ID:", currentSpecializationId, "):", newMajorDetails);
     }
 
     // Save the updated array back to the store
@@ -602,7 +633,7 @@ const handleCloseEditModal = () => {
       soTinChi: 0
     });
   };
-  
+
   const handleBacDaiHocInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setBacDaiHocData(prev => ({
@@ -610,7 +641,7 @@ const handleCloseEditModal = () => {
       [name]: name === 'soTinChi' ? (parseInt(value) || 0) : value
     }));
   };
-  
+
   // Update all cancel handlers to use resetAllData
   const handleBacDaiHocCancel = () => {
     setBacDaiHocData({
@@ -620,7 +651,7 @@ const handleCloseEditModal = () => {
     setShowBacDaiHocForm(false);
     setEditingBacDaiHocId(null);
   };
-  
+
   const handleBacDaiHocConfirmOpen = () => {
     if (isBacDaiHocFormValid) {
       setShowBacDaiHocConfirm(true);
@@ -635,10 +666,21 @@ const handleCloseEditModal = () => {
   // Modify handleBacDaiHocCreate to add to the dropdown list
   const handleBacDaiHocCreate = () => {
     if (!selectedChuyenNganhId) return;
-    
+
     if (editingBacDaiHocId !== null) {
-      // ... (code for updating existing bachelor degree - remains the same) ...
-      
+      // Update existing bachelor degree
+      const updatedBacDaiHocs = createdBacDaiHocs.map(bd =>
+        bd.id === editingBacDaiHocId
+          ? { ...bd, ten: bacDaiHocData.ten, soTinChi: bacDaiHocData.soTinChi }
+          : bd
+      );
+
+      setCreatedBacDaiHocs(updatedBacDaiHocs);
+      setConfirmedBacDaiHoc({
+        ten: bacDaiHocData.ten,
+        soTinChi: bacDaiHocData.soTinChi
+      });
+
       setEditingBacDaiHocId(null);
       console.log(`Đã cập nhật bậc đại học: ${bacDaiHocData.ten} - ${bacDaiHocData.soTinChi} tín chỉ`);
     } else {
@@ -647,21 +689,21 @@ const handleCloseEditModal = () => {
       // Ensure new ID is unique across all bachelor degrees, not just within the current specialization
       const allBacIds = Object.values(bacDaiHocByChuyenNganh).flat().map(b => b.id);
       const newId = (Math.max(0, ...allBacIds) || 0) + 1;
-      
+
       // Create the new bachelor degree object
       const newBacDaiHoc = {
         id: newId,
         ten: bacDaiHocData.ten,
         soTinChi: bacDaiHocData.soTinChi
       };
-      
+
       // Add to the list for this specialized major
       const updatedBacDaiHocs = [...existingBacDaiHocs, newBacDaiHoc];
       setBacDaiHocByChuyenNganh({
         ...bacDaiHocByChuyenNganh,
         [selectedChuyenNganhId]: updatedBacDaiHocs
       });
-      
+
       // Update current display
       setCreatedBacDaiHocs(updatedBacDaiHocs);
       setConfirmedBacDaiHoc({
@@ -676,10 +718,10 @@ const handleCloseEditModal = () => {
         ...prev,
         [newId]: [] // Start with an empty array for semesters
       }));
-      
+
       console.log(`Đã thêm bậc đại học: ${bacDaiHocData.ten} - ${bacDaiHocData.soTinChi} tín chỉ with ID ${newId}`);
     }
-    
+
     // Update UI state
     setShowBacDaiHocForm(false);
     setShowBacDaiHocConfirm(false);
@@ -688,10 +730,10 @@ const handleCloseEditModal = () => {
   // Modify handleAddHocKy to add a new semester with proper counting
   const handleAddHocKy = () => {
     if (!selectedBacDaiHocId) return;
-    
+
     // Get existing semesters for this bachelor degree
     const existingHocKy = hocKyByBacDaiHoc[selectedBacDaiHocId] || [];
-    
+
     // Create a new semester with the next number
     const newHocKyId = existingHocKy.length + 1;
     const newHocKy: HocKy = {
@@ -699,14 +741,14 @@ const handleCloseEditModal = () => {
       name: `Học kỳ ${newHocKyId}`,
       monHocList: []
     };
-    
+
     // Add the new semester to the list
     const updatedHocKy = [...existingHocKy, newHocKy];
     setHocKyByBacDaiHoc({
       ...hocKyByBacDaiHoc,
       [selectedBacDaiHocId]: updatedHocKy
     });
-    
+
     console.log(`Đã thêm ${newHocKy.name} cho bậc đại học: ${confirmedBacDaiHoc?.ten}`);
   };
 
@@ -735,21 +777,21 @@ const handleCloseEditModal = () => {
   // Add function to validate and confirm adding a course
   const handleMonHocConfirmOpen = () => {
     if (!selectedBacDaiHocId || !selectedHocKyId || !isMonHocFormValid) return;
-    
+
     // Calculate total credits across all courses in this bachelor degree
     const totalExistingCredits = calculateTotalCredits(selectedBacDaiHocId);
     const newTotalCredits = totalExistingCredits + monHocData.soTinChi;
-    
+
     // Get the credit limit for this bachelor degree
     const bacDaiHoc = createdBacDaiHocs.find(bd => bd.id === selectedBacDaiHocId);
     if (!bacDaiHoc) return;
-    
+
     // Check if adding this course would exceed the credit limit
     if (newTotalCredits > bacDaiHoc.soTinChi) {
       setCreditError(`Tổng số tín chỉ (${newTotalCredits}) vượt quá giới hạn (${bacDaiHoc.soTinChi})`);
       return;
     }
-    
+
     // If valid, show confirmation
     setShowMonHocConfirm(true);
   };
@@ -757,7 +799,7 @@ const handleCloseEditModal = () => {
   // Function to calculate total credits for a bachelor degree
   const calculateTotalCredits = (bacDaiHocId: number, excludeNonCumulative: boolean = false): number => {
     const hocKyList = hocKyByBacDaiHoc[bacDaiHocId] || [];
-    
+
     return hocKyList.reduce((total, hocKy) => {
       const hocKyTotal = hocKy.monHocList.reduce(
         (sum, monHoc) => {
@@ -766,7 +808,7 @@ const handleCloseEditModal = () => {
             return sum;
           }
           return sum + monHoc.soTinChi;
-        }, 
+        },
         0
       );
       return total + hocKyTotal;
@@ -783,7 +825,7 @@ const handleCloseEditModal = () => {
       loaiHinh: '',  // Đảm bảo reset này
       isNonCumulative: false  // Đảm bảo reset này
     });
-    
+
     setShowMonHocForm(false);
     setSelectedHocKyId(null);
     setCreditError(null);
@@ -797,28 +839,50 @@ const handleCloseEditModal = () => {
   };
 
   // Create the course after confirmation
-  const handleMonHocCreate = () => {
+  const handleMonHocCreate = async () => {
     if (!selectedBacDaiHocId || !selectedHocKyId) return;
-    
+
+    try {
+      // First create the course in the backend
+      const courseData: Partial<Course> = {
+        course_code: monHocData.maMon,
+        title: monHocData.tenMon,
+        credits: monHocData.soTinChi,
+        type: monHocData.loaiHinh,
+        is_non_cumulative: monHocData.isNonCumulative,
+        category_name: formData.khoa // Use the current department
+      };
+
+      const response = await courseManagementApi.createCourse(courseData);
+
+      if (!response.success) {
+        throw new Error(response.error || 'Failed to create course');
+      }
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+
     // Get the current semester
     const hocKyList = [...(hocKyByBacDaiHoc[selectedBacDaiHocId] || [])];
     const hocKyIndex = hocKyList.findIndex(hk => hk.id === selectedHocKyId);
-    
+
     if (hocKyIndex < 0) return;
-    
+
     let updatedHocKy = [...hocKyList];
-    
+
     // Check if we're editing or creating
     if (editingMonHocId !== null && editingHocKyId === selectedHocKyId) {
       // Update existing course
       const monHocIndex = updatedHocKy[hocKyIndex].monHocList.findIndex(
         mh => mh.id === editingMonHocId
       );
-      
+
       if (monHocIndex >= 0) {
         // Get the old course to calculate credit difference
         const oldMonHoc = updatedHocKy[hocKyIndex].monHocList[monHocIndex];
-        
+
         // Chỉ tính chênh lệch tín chỉ nếu môn học cũ và mới đều là môn tích lũy
         let creditDifference = 0;
         if (!oldMonHoc.isNonCumulative && !monHocData.isNonCumulative) {
@@ -830,34 +894,34 @@ const handleCloseEditModal = () => {
           // Môn học chuyển từ tích lũy sang không tích lũy
           creditDifference = -oldMonHoc.soTinChi;
         }
-        
+
         // Chỉ kiểm tra giới hạn tín chỉ khi môn học mới là môn tích lũy
         if (!monHocData.isNonCumulative && creditDifference > 0) {
           // Calculate new total credits, excluding non-cumulative courses
           const totalExistingCredits = calculateTotalCredits(selectedBacDaiHocId, true);
           const newTotalCredits = totalExistingCredits + creditDifference;
-          
+
           // Kiểm tra giới hạn
           const bacDaiHoc = createdBacDaiHocs.find(b => b.id === selectedBacDaiHocId);
           if (!bacDaiHoc) return;
-          
+
           if (newTotalCredits > bacDaiHoc.soTinChi) {
             setCreditError(`Tổng số tín chỉ tích lũy (${newTotalCredits}) vượt quá giới hạn (${bacDaiHoc.soTinChi})`);
             return;
           }
         }
-        
+
         // Update course...
         const updatedMonHocList = [...updatedHocKy[hocKyIndex].monHocList];
         updatedMonHocList[monHocIndex] = {
           ...monHocData
         };
-        
+
         updatedHocKy[hocKyIndex] = {
           ...updatedHocKy[hocKyIndex],
           monHocList: updatedMonHocList
         };
-        
+
         console.log(`Đã cập nhật môn học: ${monHocData.tenMon} (${monHocData.soTinChi} tín chỉ)`);
       }
     } else {
@@ -870,22 +934,22 @@ const handleCloseEditModal = () => {
         loaiHinh: monHocData.loaiHinh,
         isNonCumulative: monHocData.isNonCumulative
       };
-      
+
       // Add the course to the semester
       updatedHocKy[hocKyIndex] = {
         ...updatedHocKy[hocKyIndex],
         monHocList: [...updatedHocKy[hocKyIndex].monHocList, newMonHoc]
       };
-      
+
       console.log(`Đã thêm môn học: ${newMonHoc.tenMon} (${newMonHoc.soTinChi} tín chỉ) vào ${updatedHocKy[hocKyIndex].name}`);
     }
-    
+
     // Update the state
     setHocKyByBacDaiHoc({
       ...hocKyByBacDaiHoc,
       [selectedBacDaiHocId]: updatedHocKy
     });
-    
+
     // Reset form and close modals
     setShowMonHocForm(false);
     setShowMonHocConfirm(false);
@@ -896,30 +960,30 @@ const handleCloseEditModal = () => {
   };
 
   // Form validation for bachelor degree
-  const isBacDaiHocFormValid = 
-    bacDaiHocData.ten.trim() !== '' && 
+  const isBacDaiHocFormValid =
+    bacDaiHocData.ten.trim() !== '' &&
     bacDaiHocData.soTinChi > 100;
 
   // Validation for course form
-  const isMonHocFormValid = 
-    monHocData.maMon.trim() !== '' && 
-    monHocData.tenMon.trim() !== '' && 
+  const isMonHocFormValid =
+    monHocData.maMon.trim() !== '' &&
+    monHocData.tenMon.trim() !== '' &&
     monHocData.soTinChi > 0;
 
   // Add this function to check if all required fields are filled and criteria are met
   const isAddNganhFormValid = () => {
     // Check if the basic fields are filled
-    const basicFieldsFilled = 
-      formData.maNganh.trim() !== '' && 
-      formData.tenNganh.trim() !== '' && 
+    const basicFieldsFilled =
+      formData.maNganh.trim() !== '' &&
+      formData.tenNganh.trim() !== '' &&
       formData.khoa.trim() !== '';
-    
+
     // Check if there is at least one semester with at least one course
     let hasCoursesInSemester = false;
-    
+
     if (selectedBacDaiHocId) {
       const semesters = hocKyByBacDaiHoc[selectedBacDaiHocId] || [];
-      
+
       // Check if any semester has courses
       for (const semester of semesters) {
         if (semester.monHocList.length > 0) {
@@ -928,7 +992,7 @@ const handleCloseEditModal = () => {
         }
       }
     }
-    
+
     return basicFieldsFilled && hasCoursesInSemester;
   };
 
@@ -947,12 +1011,12 @@ const handleCloseEditModal = () => {
     const selectedMajorBasic = nganhHocList.find(nganh => nganh.id === selectedNganhId);
     if (selectedMajorBasic) {
       // Set basic data
-      setCurrentMajorData(selectedMajorBasic); 
-      
+      setCurrentMajorData(selectedMajorBasic);
+
       // Find detailed data based on major code
       const details = majorDetailsDataStore[selectedMajorBasic.maNganh];
       setCurrentMajorDetails(details || null);
-      
+
       setShowViewModal(true);
     }
     handleMenuClose();
@@ -974,103 +1038,103 @@ const handleCloseEditModal = () => {
     const detailsArray = majorDetailsDataStore[nganhToEdit.maNganh] || [];
 
     if (detailsArray.length > 0) {
-        // Find the specific MajorDetails that corresponds to the nganhToEdit.id
-        // This assumes MajorDetails.id uniquely identifies the specialization within the major code
-        let initialMajorDetails = detailsArray.find(d => d.id === nganhToEdit.id);
+      // Find the specific MajorDetails that corresponds to the nganhToEdit.id
+      // This assumes MajorDetails.id uniquely identifies the specialization within the major code
+      let initialMajorDetails = detailsArray.find(d => d.id === nganhToEdit.id);
 
-        // Fallback if no direct match (e.g., if IDs got desynced, though they shouldn't)
-        if (!initialMajorDetails) {
-            console.warn(`No MajorDetails found for id ${nganhToEdit.id} in ${nganhToEdit.maNganh}. Defaulting to first.`);
-            initialMajorDetails = detailsArray[0];
-        }
+      // Fallback if no direct match (e.g., if IDs got desynced, though they shouldn't)
+      if (!initialMajorDetails) {
+        console.warn(`No MajorDetails found for id ${nganhToEdit.id} in ${nganhToEdit.maNganh}. Defaulting to first.`);
+        initialMajorDetails = detailsArray[0];
+      }
 
-        if (!initialMajorDetails) {
-             console.error(`Cannot load details for major ${nganhToEdit.maNganh}`);
-             // Handle error state - maybe close menu and show an error?
-             handleMenuClose();
-             return;
-        }
+      if (!initialMajorDetails) {
+        console.error(`Cannot load details for major ${nganhToEdit.maNganh}`);
+        // Handle error state - maybe close menu and show an error?
+        handleMenuClose();
+        return;
+      }
 
-        setEditingMajorDetails(initialMajorDetails); // Set the details being edited
+      setEditingMajorDetails(initialMajorDetails); // Set the details being edited
 
-        // Populate available specializations for the dropdown
-        const specializations = detailsArray.map(detail => ({
-            id: detail.id, // Use the unique ID from MajorDetails
-            name: detail.chuyenNganh
-        }));
-        setAvailableSpecializations(specializations);
+      // Populate available specializations for the dropdown
+      const specializations = detailsArray.map(detail => ({
+        id: detail.id, // Use the unique ID from MajorDetails
+        name: detail.chuyenNganh
+      }));
+      setAvailableSpecializations(specializations);
 
-        // *** Set the initial dropdown selection ***
-        setSelectedSpecializationId(initialMajorDetails.id);
+      // *** Set the initial dropdown selection ***
+      setSelectedSpecializationId(initialMajorDetails.id);
 
-        // Load data for the initially selected specialization
-        setConfirmedChuyenNganh(initialMajorDetails.chuyenNganh);
-        // We need a consistent way to manage chuyenNganhList and createdChuyenNganhs during edit
-        // For simplicity, let's just use availableSpecializations for the dropdown source
-        // And rely on confirmedChuyenNganh for display below the dropdown
-        setChuyenNganhList(detailsArray.map(d => ({ id: d.id, tenChuyenNganh: d.chuyenNganh, nganhId: nganhToEdit.id }))); // Populate internal list if needed elsewhere
-        setCreatedChuyenNganhs(specializations); // Keep this consistent with dropdown
-        setSelectedChuyenNganhId(initialMajorDetails.id); // Internal tracking ID
-        setShowBacDaiHocButton(true); // Show next step button
+      // Load data for the initially selected specialization
+      setConfirmedChuyenNganh(initialMajorDetails.chuyenNganh);
+      // We need a consistent way to manage chuyenNganhList and createdChuyenNganhs during edit
+      // For simplicity, let's just use availableSpecializations for the dropdown source
+      // And rely on confirmedChuyenNganh for display below the dropdown
+      setChuyenNganhList(detailsArray.map(d => ({ id: d.id, tenChuyenNganh: d.chuyenNganh, nganhId: nganhToEdit.id }))); // Populate internal list if needed elsewhere
+      setCreatedChuyenNganhs(specializations); // Keep this consistent with dropdown
+      setSelectedChuyenNganhId(initialMajorDetails.id); // Internal tracking ID
+      setShowBacDaiHocButton(true); // Show next step button
 
-        // Load bachelor degrees for this initial specialization
-        const initialBacDaiHocList = initialMajorDetails.bacDaoTaoList.map((bac, index) => ({
-            // Use a consistent ID generation/mapping if bac.id is not reliable or doesn't exist
-            id: bac.id || index + 1, // Prefer bac.id if available
-            ten: bac.tenBac,
-            soTinChi: bac.tongTinChi
-        }));
+      // Load bachelor degrees for this initial specialization
+      const initialBacDaiHocList = initialMajorDetails.bacDaoTaoList.map((bac, index) => ({
+        // Use a consistent ID generation/mapping if bac.id is not reliable or doesn't exist
+        id: bac.id || index + 1, // Prefer bac.id if available
+        ten: bac.tenBac,
+        soTinChi: bac.tongTinChi
+      }));
 
-        setCreatedBacDaiHocs(initialBacDaiHocList); // For the dropdown/display
-        // Store bachelor degrees mapped by the *internal* selectedChuyenNganhId
-        setBacDaiHocByChuyenNganh(prev => ({
-            ...prev,
-            [initialMajorDetails.id]: initialBacDaiHocList
-        }));
+      setCreatedBacDaiHocs(initialBacDaiHocList); // For the dropdown/display
+      // Store bachelor degrees mapped by the *internal* selectedChuyenNganhId
+      setBacDaiHocByChuyenNganh(prev => ({
+        ...prev,
+        [initialMajorDetails.id]: initialBacDaiHocList
+      }));
 
 
-        // Load semesters and courses, mapping them correctly
-        const hocKyMapping: {[bacId: number]: HocKy[]} = {};
-        let firstBacDaiHocId: number | null = null;
+      // Load semesters and courses, mapping them correctly
+      const hocKyMapping: { [bacId: number]: HocKy[] } = {};
+      let firstBacDaiHocId: number | null = null;
 
-        initialMajorDetails.bacDaoTaoList.forEach((bac, index) => {
-            const bacId = bac.id || index + 1; // Use consistent ID
-            if (index === 0) firstBacDaiHocId = bacId; // Get ID of the first one
-            if (bac.hocKyList && bac.hocKyList.length > 0) {
-                hocKyMapping[bacId] = bac.hocKyList;
-            } else {
-                hocKyMapping[bacId] = []; // Ensure empty array if no semesters
-            }
-        });
-        setHocKyByBacDaiHoc(hocKyMapping); // Load all semesters for all bachelor degrees
-
-        // Select the first bachelor degree by default
-        if (initialBacDaiHocList.length > 0 && firstBacDaiHocId !== null) {
-            setSelectedBacDaiHocId(firstBacDaiHocId);
-            setConfirmedBacDaiHoc({
-                ten: initialBacDaiHocList[0].ten,
-                soTinChi: initialBacDaiHocList[0].soTinChi
-            });
-            setShowHocKyButton(true);
+      initialMajorDetails.bacDaoTaoList.forEach((bac, index) => {
+        const bacId = bac.id || index + 1; // Use consistent ID
+        if (index === 0) firstBacDaiHocId = bacId; // Get ID of the first one
+        if (bac.hocKyList && bac.hocKyList.length > 0) {
+          hocKyMapping[bacId] = bac.hocKyList;
         } else {
-            // No bachelor degrees loaded
-            setSelectedBacDaiHocId(null);
-            setConfirmedBacDaiHoc(null);
-            setShowHocKyButton(false); // Or true if you want to allow adding immediately
+          hocKyMapping[bacId] = []; // Ensure empty array if no semesters
         }
+      });
+      setHocKyByBacDaiHoc(hocKyMapping); // Load all semesters for all bachelor degrees
+
+      // Select the first bachelor degree by default
+      if (initialBacDaiHocList.length > 0 && firstBacDaiHocId !== null) {
+        setSelectedBacDaiHocId(firstBacDaiHocId);
+        setConfirmedBacDaiHoc({
+          ten: initialBacDaiHocList[0].ten,
+          soTinChi: initialBacDaiHocList[0].soTinChi
+        });
+        setShowHocKyButton(true);
+      } else {
+        // No bachelor degrees loaded
+        setSelectedBacDaiHocId(null);
+        setConfirmedBacDaiHoc(null);
+        setShowHocKyButton(false); // Or true if you want to allow adding immediately
+      }
 
     } else {
-        // No details found in the store for this major code - start fresh
-        console.warn(`No details found for major code ${nganhToEdit.maNganh}. Starting fresh.`);
-        resetAllData(); // Reset sub-forms
-        setAvailableSpecializations([]);
-        setSelectedSpecializationId(null);
-        // Keep basic form data filled
-        setFormData({
-            maNganh: nganhToEdit.maNganh,
-            tenNganh: nganhToEdit.tenNganh,
-            khoa: nganhToEdit.khoa
-        });
+      // No details found in the store for this major code - start fresh
+      console.warn(`No details found for major code ${nganhToEdit.maNganh}. Starting fresh.`);
+      resetAllData(); // Reset sub-forms
+      setAvailableSpecializations([]);
+      setSelectedSpecializationId(null);
+      // Keep basic form data filled
+      setFormData({
+        maNganh: nganhToEdit.maNganh,
+        tenNganh: nganhToEdit.tenNganh,
+        khoa: nganhToEdit.khoa
+      });
     }
 
     setEditingNganhId(selectedNganhId); // Set the ID of the major being edited
@@ -1088,51 +1152,51 @@ const handleCloseEditModal = () => {
   const confirmDeleteNganh = () => {
     if (nganhToDelete) {
       console.log(`Đang xóa ngành có ID: ${nganhToDelete}`);
-      
+
       // Tìm ngành cần xóa để lấy thông tin chi tiết
       const nganhToBeDeleted = nganhHocList.find(nganh => nganh.id === nganhToDelete);
       console.log('Thông tin ngành cần xóa:', nganhToBeDeleted);
-      
+
       // Xóa khỏi danh sách ngành
       let updatedNganhList = nganhHocList.filter(nganh => nganh.id !== nganhToDelete);
-      
+
       // Cập nhật lại STT cho tất cả các ngành còn lại
       updatedNganhList = updatedNganhList.map((nganh, index) => ({
         ...nganh,
         id: index + 1 // Đánh lại số thứ tự từ 1
       }));
-      
+
       console.log('Số lượng ngành sau khi xóa:', updatedNganhList.length);
-      
+
       // Cập nhật state
       setNganhHocList(updatedNganhList);
-      
+
       // Xóa khỏi majorDetailsDataStore nếu có
       if (nganhToBeDeleted) {
         const { maNganh } = nganhToBeDeleted;
-        
+
         if (majorDetailsDataStore[maNganh]) {
           // Lọc ra các details không thuộc ngành bị xóa
           const updatedDetails = majorDetailsDataStore[maNganh].filter(
             detail => detail.id !== nganhToDelete
           );
-          
+
           // Cập nhật lại ID của details tương ứng với ID ngành mới
           const reindexedDetails = updatedDetails.map(detail => {
             const correspondingNganh = updatedNganhList.find(n => n.maNganh === detail.maNganh);
             return correspondingNganh ? { ...detail, id: correspondingNganh.id } : detail;
           });
-          
+
           if (reindexedDetails.length === 0) {
             delete majorDetailsDataStore[maNganh];
           } else {
             majorDetailsDataStore[maNganh] = reindexedDetails;
           }
-          
+
           console.log('Đã xóa và cập nhật thông tin chi tiết của ngành:', maNganh);
         }
       }
-      
+
       // Reset sau khi xóa xong
       setNganhToDelete(null);
     } else {
@@ -1144,19 +1208,19 @@ const handleCloseEditModal = () => {
   // Update handleChuyenNganhSelectChange to load bachelor degrees for the selected specialized major
   const handleChuyenNganhSelectChange = (option: any) => {
     if (!option) return;
-    
+
     const selectedId = option.value;
     setSelectedChuyenNganhId(selectedId);
-    
+
     // Find the selected chuyên ngành
     const selected = chuyenNganhList.find(cn => cn.id === selectedId);
     if (selected) {
       setConfirmedChuyenNganh(selected.tenChuyenNganh);
-      
+
       // Load bachelor degrees for this specialized major
       const bacDaiHocsForChuyenNganh = bacDaiHocByChuyenNganh[selectedId] || [];
       setCreatedBacDaiHocs(bacDaiHocsForChuyenNganh);
-      
+
       // Reset selected bachelor degree
       setConfirmedBacDaiHoc(null);
       setSelectedBacDaiHocId(null);
@@ -1167,10 +1231,10 @@ const handleCloseEditModal = () => {
   // Add handler for bachelor degree dropdown change
   const handleBacDaiHocSelectChange = (option: any) => {
     if (!option) return;
-    
+
     const selectedId = option.value;
     setSelectedBacDaiHocId(selectedId);
-    
+
     // Find the selected bachelor degree
     const selected = createdBacDaiHocs.find(bd => bd.id === selectedId);
     if (selected) {
@@ -1198,21 +1262,21 @@ const handleCloseEditModal = () => {
           }
         }
       }
-      
+
       // Apply khoa filter
       if (khoanFilter !== 'all' && nganh.khoa !== khoanFilter) {
         return false;
       }
-      
+
       return true;
     });
-    
+
     // Then apply sorting
     if (sortDirection !== 'none') {
       filtered = [...filtered].sort((a, b) => {
         const nameA = a.tenNganh.toLowerCase();
         const nameB = b.tenNganh.toLowerCase();
-        
+
         if (sortDirection === 'asc') {
           return nameA.localeCompare(nameB);
         } else {
@@ -1220,62 +1284,70 @@ const handleCloseEditModal = () => {
         }
       });
     }
-    
+
     return filtered;
   }, [nganhHocList, searchTerm, searchFilter, khoanFilter, sortDirection]);
 
   // Add these new handler functions for deletion
-  const handleDeleteMonHoc = (hocKyId: number, monHocId: number) => {
+  const handleDeleteMonHoc = async (hocKyId: number, monHocId: number) => {
     if (!selectedBacDaiHocId) return;
-    
-    // Get the current list of semesters
-    const hocKyList = [...(hocKyByBacDaiHoc[selectedBacDaiHocId] || [])];
-    const hocKyIndex = hocKyList.findIndex(hk => hk.id === hocKyId);
-    
-    if (hocKyIndex < 0) return;
-    
-    // Filter out the course to delete
-    const updatedMonHocList = hocKyList[hocKyIndex].monHocList.filter(
-      mh => mh.id !== monHocId
-    );
-    
-    // Update the semester with the filtered course list
-    const updatedHocKy = [...hocKyList];
-    updatedHocKy[hocKyIndex] = {
-      ...updatedHocKy[hocKyIndex],
-      monHocList: updatedMonHocList
-    };
-    
-    // Update the state
-    setHocKyByBacDaiHoc({
-      ...hocKyByBacDaiHoc,
-      [selectedBacDaiHocId]: updatedHocKy
-    });
-    
-    console.log(`Đã xóa môn học ID: ${monHocId} khỏi ${hocKyList[hocKyIndex].name}`);
+
+    // Gọi API xóa môn học trên backend
+    try {
+      await courseManagementApi.deleteCourse(monHocId);
+      // Sau khi xóa thành công trên backend, cập nhật lại state local như cũ
+
+      // Get the current list of semesters
+      const hocKyList = [...(hocKyByBacDaiHoc[selectedBacDaiHocId] || [])];
+      const hocKyIndex = hocKyList.findIndex(hk => hk.id === hocKyId);
+
+      if (hocKyIndex < 0) return;
+
+      // Filter out the course to delete
+      const updatedMonHocList = hocKyList[hocKyIndex].monHocList.filter(
+        mh => mh.id !== monHocId
+      );
+
+      // Update the semester with the filtered course list
+      const updatedHocKy = [...hocKyList];
+      updatedHocKy[hocKyIndex] = {
+        ...updatedHocKy[hocKyIndex],
+        monHocList: updatedMonHocList
+      };
+
+      // Update the state
+      setHocKyByBacDaiHoc({
+        ...hocKyByBacDaiHoc,
+        [selectedBacDaiHocId]: updatedHocKy
+      });
+
+      console.log(`Đã xóa môn học ID: ${monHocId} khỏi ${hocKyList[hocKyIndex].name}`);
+    } catch (error: any) {
+      // Xử lý lỗi nếu cần
+      alert('Xóa môn học thất bại: ' + (error?.message || 'Lỗi không xác định'));
+    }
   };
 
   const handleDeleteHocKy = (hocKyId: number) => {
     if (!selectedBacDaiHocId) return;
-    
+
     // Filter out the semester to delete
     const updatedHocKyList = (hocKyByBacDaiHoc[selectedBacDaiHocId] || [])
       .filter(hk => hk.id !== hocKyId);
-    
+
     // Update the state
     setHocKyByBacDaiHoc({
       ...hocKyByBacDaiHoc,
       [selectedBacDaiHocId]: updatedHocKyList
     });
-    
+
     console.log(`Đã xóa Học kỳ ID: ${hocKyId}`);
   };
 
   // Add function to handle editing a course
   const handleEditMonHoc = (hocKyId: number, monHoc: MonHoc) => {
-    setEditingHocKyId(hocKyId);
     setEditingMonHocId(monHoc.id);
-    setSelectedHocKyId(hocKyId);
+    setEditingHocKyId(hocKyId);
     setMonHocData({
       id: monHoc.id,
       maMon: monHoc.maMon,
@@ -1284,14 +1356,57 @@ const handleCloseEditModal = () => {
       loaiHinh: monHoc.loaiHinh || '',
       isNonCumulative: monHoc.isNonCumulative || false
     });
-    setCreditError(null);
+    setShowMonHocForm(true);
   };
+
+  // Add function to handle saving the edited course
+  const handleSaveEditMonHoc = async () => {
+    if (editingMonHocId !== null && editingHocKyId !== null) {
+      try {
+        const updateData: Partial<Course> = {
+          course_code: monHocData.maMon,
+          title: monHocData.tenMon,
+          credits: monHocData.soTinChi,
+          type: monHocData.loaiHinh,
+          is_non_cumulative: monHocData.isNonCumulative,
+          category_name: formData.khoa
+        };
+        const response = await courseManagementApi.updateCourse(editingMonHocId, updateData);
+        if (!response.success) {
+          setCreditError(response.error || 'Cập nhật môn học thất bại');
+          return;
+        }
+        // Update local state after successful edit
+        const hocKyList = [...(hocKyByBacDaiHoc[selectedBacDaiHocId || -1] || [])];
+        const hocKyIndex = hocKyList.findIndex(hk => hk.id === editingHocKyId);
+        if (hocKyIndex >= 0) {
+          const updatedMonHocList = hocKyList[hocKyIndex].monHocList.map(mh =>
+            mh.id === editingMonHocId ? { ...mh, ...monHocData } : mh
+          );
+          hocKyList[hocKyIndex] = { ...hocKyList[hocKyIndex], monHocList: updatedMonHocList };
+          setHocKyByBacDaiHoc({
+            ...hocKyByBacDaiHoc,
+            [selectedBacDaiHocId || -1]: hocKyList
+          });
+        }
+        setShowMonHocForm(false);
+        setEditingMonHocId(null);
+        setEditingHocKyId(null);
+        setMonHocData({ id: 0, maMon: '', tenMon: '', soTinChi: 0, loaiHinh: '', isNonCumulative: false });
+        setCreditError(null);
+        console.log(`Đã cập nhật môn học: ${monHocData.tenMon} (${monHocData.soTinChi} tín chỉ)`);
+      } catch (err: any) {
+        setCreditError(err.message || 'Cập nhật môn học thất bại');
+      }
+    }
+  };
+
 
   // Add function to handle editing a specialized major
   const handleEditChuyenNganh = (chuyenNganhId: number) => {
     const chuyenNganh = chuyenNganhList.find(cn => cn.id === chuyenNganhId);
     if (!chuyenNganh) return;
-    
+
     setEditingChuyenNganhId(chuyenNganhId);
     setChuyenNganhName(chuyenNganh.tenChuyenNganh);
     setShowChuyenNganhForm(true);
@@ -1308,19 +1423,19 @@ const handleCloseEditModal = () => {
   // Add confirmDeleteChuyenNganh to perform the actual deletion after confirmation
   const confirmDeleteChuyenNganh = () => {
     if (chuyenNganhToDelete === null) return;
-    
+
     // Remove the specialized major
     const updatedChuyenNganhList = chuyenNganhList.filter(cn => cn.id !== chuyenNganhToDelete);
     const updatedCreatedChuyenNganhs = createdChuyenNganhs.filter(cn => cn.id !== chuyenNganhToDelete);
-    
+
     setChuyenNganhList(updatedChuyenNganhList);
     setCreatedChuyenNganhs(updatedCreatedChuyenNganhs);
-    
+
     // Also remove its bachelor degrees
     const updatedBacDaiHocByChuyenNganh = { ...bacDaiHocByChuyenNganh };
     delete updatedBacDaiHocByChuyenNganh[chuyenNganhToDelete];
     setBacDaiHocByChuyenNganh(updatedBacDaiHocByChuyenNganh);
-    
+
     // Reset selections if the deleted one was selected
     if (selectedChuyenNganhId === chuyenNganhToDelete) {
       setSelectedChuyenNganhId(null);
@@ -1330,23 +1445,23 @@ const handleCloseEditModal = () => {
       setSelectedBacDaiHocId(null);
       setShowHocKyButton(false);
     }
-    
+
     // Close the confirmation modal
     setChuyenNganhToDelete(null);
     setShowDeleteChuyenNganhConfirm(false);
-    
+
     console.log(`Đã xóa chuyên ngành có ID: ${chuyenNganhToDelete}`);
   };
 
   // Add function to handle editing a bachelor degree
   const handleEditBacDaiHoc = (bacDaiHocId: number) => {
     if (!selectedChuyenNganhId) return;
-    
+
     const bacDaiHocs = bacDaiHocByChuyenNganh[selectedChuyenNganhId] || [];
     const bacDaiHoc = bacDaiHocs.find(bd => bd.id === bacDaiHocId);
-    
+
     if (!bacDaiHoc) return;
-    
+
     setEditingBacDaiHocId(bacDaiHocId);
     setBacDaiHocData({
       ten: bacDaiHoc.ten,
@@ -1366,35 +1481,35 @@ const handleCloseEditModal = () => {
   // Add confirmDeleteBacDaiHoc to perform the actual deletion after confirmation
   const confirmDeleteBacDaiHoc = () => {
     if (!selectedChuyenNganhId || bacDaiHocToDelete === null) return;
-    
+
     // Remove the bachelor degree from its specialized major
     const updatedBacDaiHocs = (bacDaiHocByChuyenNganh[selectedChuyenNganhId] || [])
       .filter(bd => bd.id !== bacDaiHocToDelete);
-    
+
     setBacDaiHocByChuyenNganh({
       ...bacDaiHocByChuyenNganh,
       [selectedChuyenNganhId]: updatedBacDaiHocs
     });
-    
+
     // Update the displayed bachelor degrees
     setCreatedBacDaiHocs(updatedBacDaiHocs);
-    
+
     // Also remove all semesters and courses for this bachelor degree
     const updatedHocKyByBacDaiHoc = { ...hocKyByBacDaiHoc };
     delete updatedHocKyByBacDaiHoc[bacDaiHocToDelete];
     setHocKyByBacDaiHoc(updatedHocKyByBacDaiHoc);
-    
+
     // Reset selections if the deleted one was selected
     if (selectedBacDaiHocId === bacDaiHocToDelete) {
       setSelectedBacDaiHocId(null);
       setConfirmedBacDaiHoc(null);
       setShowHocKyButton(false);
     }
-    
+
     // Close the confirmation modal
     setBacDaiHocToDelete(null);
     setShowDeleteBacDaiHocConfirm(false);
-    
+
     console.log(`Đã xóa bậc đại học có ID: ${bacDaiHocToDelete}`);
   };
 
@@ -1407,14 +1522,14 @@ const handleCloseEditModal = () => {
       tenMon: '',
       soTinChi: 0
     });
-    
+
     // Reset editing state
     setEditingMonHocId(null);
     setEditingHocKyId(null);
-    
+
     // Clear any previous credit error
     setCreditError(null);
-    
+
     // Toggle the form visibility for the selected semester
     setSelectedHocKyId(prevId => (prevId === hocKyId ? null : hocKyId));
   };
@@ -1433,18 +1548,18 @@ const handleCloseEditModal = () => {
               className="search-input"
             />
           </div>
-          
+
           <div className="filter-bar">
             <div className="search-filter">
               <span className="filter-label">Tìm theo:</span>
               <div className="filter-options">
-                <button 
+                <button
                   className={`filter-option ${searchFilter === 'tenNganh' ? 'active' : ''}`}
                   onClick={() => handleFilterChange('tenNganh')}
                 >
                   Tên ngành
                 </button>
-                <button 
+                <button
                   className={`filter-option ${searchFilter === 'maNganh' ? 'active' : ''}`}
                   onClick={() => handleFilterChange('maNganh')}
                 >
@@ -1452,21 +1567,21 @@ const handleCloseEditModal = () => {
                 </button>
               </div>
             </div>
-            
+
             <div className="advanced-filters">
               <div className="sort-filter">
-                <button 
+                <button
                   className={`sort-button ${sortDirection !== 'none' ? 'active' : ''}`}
                   onClick={toggleSort}
                   title="Sắp xếp theo tên ngành"
                 >
-                  {sortDirection === 'asc' ? <FaSortAlphaDown /> : 
-                   sortDirection === 'desc' ? <FaSortAlphaUp /> : 
-                   <FaSortAlphaDown />} 
+                  {sortDirection === 'asc' ? <FaSortAlphaDown /> :
+                    sortDirection === 'desc' ? <FaSortAlphaUp /> :
+                      <FaSortAlphaDown />}
                   <span>A-Z</span>
                 </button>
               </div>
-              
+
               <div className="khoa-filter">
                 <span className="filter-label">Khoa:</span>
                 <div className="dropdown-container">
@@ -1520,8 +1635,8 @@ const handleCloseEditModal = () => {
                   <td>{nganh.tenNganh}</td>
                   <td>{nganh.khoa}</td>
                   <td>
-                    <IconButton 
-                      size="small" 
+                    <IconButton
+                      size="small"
                       onClick={(e) => handleMenuOpen(e, nganh.id)}
                       aria-label="actions"
                     >
@@ -1538,13 +1653,13 @@ const handleCloseEditModal = () => {
       {/* Add Major Modal */}
       <AnimatePresence>
         {showAddModal && (
-          <motion.div 
+          <motion.div
             className="modal-overlay"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
           >
-            <motion.div 
+            <motion.div
               className="create-nganh-modal"
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
@@ -1552,7 +1667,7 @@ const handleCloseEditModal = () => {
               transition={{ type: "spring", damping: 20, stiffness: 300 }}
             >
               <h2 className="modal-title">Tạo thông tin ngành học</h2>
-              
+
               <div className="nganh-form">
                 <div className="form-row">
                   <label htmlFor="maNganh">Mã ngành</label>
@@ -1564,7 +1679,7 @@ const handleCloseEditModal = () => {
                     onChange={handleInputChange}
                   />
                 </div>
-                
+
                 <div className="form-row">
                   <label htmlFor="tenNganh">Ngành</label>
                   <input
@@ -1575,7 +1690,7 @@ const handleCloseEditModal = () => {
                     onChange={handleInputChange}
                   />
                 </div>
-                
+
                 <div className="form-row">
                   <label htmlFor="khoa">Khoa</label>
                   <input
@@ -1586,7 +1701,7 @@ const handleCloseEditModal = () => {
                     onChange={handleInputChange}
                   />
                 </div>
-                
+
                 {/* Display the button to add specialized major when all form fields are filled */}
                 {!showChuyenNganhForm && formData.maNganh && formData.tenNganh && formData.khoa && (
                   <div className="button-container" style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
@@ -1603,8 +1718,8 @@ const handleCloseEditModal = () => {
                     <Select
                       id="chuyenNganhDropdown"
                       className="chuyen-nganh-dropdown"
-                      value={selectedChuyenNganhId ? 
-                        { value: selectedChuyenNganhId, label: createdChuyenNganhs.find(cn => cn.id === selectedChuyenNganhId)?.name || '' } : 
+                      value={selectedChuyenNganhId ?
+                        { value: selectedChuyenNganhId, label: createdChuyenNganhs.find(cn => cn.id === selectedChuyenNganhId)?.name || '' } :
                         null
                       }
                       onChange={handleChuyenNganhSelectChange}
@@ -1629,17 +1744,17 @@ const handleCloseEditModal = () => {
                         placeholder="Nhập tên chuyên ngành"
                       />
                     </div>
-                    
+
                     <div className="chuyen-nganh-actions">
-                      <button 
-                        className="confirm-btn" 
+                      <button
+                        className="confirm-btn"
                         onClick={handleChuyenNganhConfirmOpen}
                         disabled={!chuyenNganhName.trim()}
                       >
                         Xác nhận
                       </button>
-                      <button 
-                        className="cancel-btn" 
+                      <button
+                        className="cancel-btn"
                         onClick={handleChuyenNganhCancel}
                       >
                         Hủy
@@ -1647,7 +1762,7 @@ const handleCloseEditModal = () => {
                     </div>
                   </div>
                 )}
-                
+
                 {/* Display the currently selected specialized major with edit/delete buttons */}
                 {showBacDaiHocButton && confirmedChuyenNganh && selectedChuyenNganhId && (
                   <div className="added-chuyen-nganh">
@@ -1657,13 +1772,13 @@ const handleCloseEditModal = () => {
                         <span className="chuyen-nganh-value">{confirmedChuyenNganh}</span>
                       </div>
                       <div className="chuyen-nganh-actions">
-                        <button 
+                        <button
                           className="edit-btn"
                           onClick={() => handleEditChuyenNganh(selectedChuyenNganhId)}
                         >
                           Sửa
                         </button>
-                        <button 
+                        <button
                           className="delete-btn"
                           onClick={() => handleDeleteChuyenNganh(selectedChuyenNganhId)}
                         >
@@ -1671,7 +1786,7 @@ const handleCloseEditModal = () => {
                         </button>
                       </div>
                     </div>
-                    
+
                     {/* Always show the button to add bachelor degree */}
                     {!showBacDaiHocForm && (
                       <div className="button-container" style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
@@ -1680,7 +1795,7 @@ const handleCloseEditModal = () => {
                         </button>
                       </div>
                     )}
-                    
+
                     {/* Display the bachelor degrees dropdown if any have been created */}
                     {createdBacDaiHocs.length > 0 && (
                       <div className="bac-dai-hoc-dropdown-container">
@@ -1688,16 +1803,16 @@ const handleCloseEditModal = () => {
                         <Select
                           id="bacDaiHocDropdown"
                           className="bac-dai-hoc-dropdown"
-                          value={selectedBacDaiHocId ? 
-                            { 
-                              value: selectedBacDaiHocId, 
-                              label: createdBacDaiHocs.find(bd => bd.id === selectedBacDaiHocId)?.ten || '' 
-                            } : 
+                          value={selectedBacDaiHocId ?
+                            {
+                              value: selectedBacDaiHocId,
+                              label: createdBacDaiHocs.find(bd => bd.id === selectedBacDaiHocId)?.ten || ''
+                            } :
                             null
                           }
                           onChange={handleBacDaiHocSelectChange}
-                          options={createdBacDaiHocs.map(bd => ({ 
-                            value: bd.id, 
+                          options={createdBacDaiHocs.map(bd => ({
+                            value: bd.id,
                             label: `${bd.ten} (${bd.soTinChi} tín chỉ)`
                           }))}
                           placeholder="Chọn bậc đại học"
@@ -1705,7 +1820,7 @@ const handleCloseEditModal = () => {
                         />
                       </div>
                     )}
-                    
+
                     {/* Bachelor Degree Form */}
                     {showBacDaiHocForm && (
                       <div className="bac-dai-hoc-form">
@@ -1720,7 +1835,7 @@ const handleCloseEditModal = () => {
                             placeholder="Nhập tên bậc đại học"
                           />
                         </div>
-                        
+
                         <div className="form-row">
                           <label htmlFor="soTinChi">Số tín chỉ</label>
                           <input
@@ -1732,23 +1847,23 @@ const handleCloseEditModal = () => {
                             placeholder="Nhập số tín chỉ (>100)"
                           />
                         </div>
-                        
+
                         {bacDaiHocData.soTinChi > 0 && bacDaiHocData.soTinChi <= 100 && (
                           <div className="validation-error">
                             Số tín chỉ phải lớn hơn 100
                           </div>
                         )}
-                        
+
                         <div className="bac-dai-hoc-actions">
-                          <button 
-                            className="confirm-btn" 
+                          <button
+                            className="confirm-btn"
                             onClick={handleBacDaiHocConfirmOpen}
                             disabled={!isBacDaiHocFormValid}
                           >
                             Xác nhận
                           </button>
-                          <button 
-                            className="cancel-btn" 
+                          <button
+                            className="cancel-btn"
                             onClick={handleBacDaiHocCancel}
                           >
                             Hủy
@@ -1756,8 +1871,8 @@ const handleCloseEditModal = () => {
                         </div>
                       </div>
                     )}
-                    
-                    {/* Display confirmed bachelor degree with edit/delete buttons */}
+
+                    {/* Hiển thị thông tin bậc đại học đã chọn */}
                     {confirmedBacDaiHoc && selectedBacDaiHocId && (
                       <div className="added-bac-dai-hoc">
                         <div className="bac-dai-hoc-header">
@@ -1773,19 +1888,20 @@ const handleCloseEditModal = () => {
                             <div className="info-row">
                               <span className="info-label">Đã sử dụng:</span>
                               <span className="info-value">{calculateTotalCredits(selectedBacDaiHocId, true)} tín chỉ</span>
-                            </div>                            <div className="info-row">
+                            </div>
+                            <div className="info-row">
                               <span className="info-label">Tổng tín chỉ:</span>
                               <span className="info-value">{confirmedBacDaiHoc.soTinChi}</span>
                             </div>
                           </div>
                           <div className="bac-dai-hoc-actions">
-                            <button 
+                            <button
                               className="edit-btn"
                               onClick={() => handleEditBacDaiHoc(selectedBacDaiHocId)}
                             >
                               Sửa
                             </button>
-                            <button 
+                            <button
                               className="delete-btn"
                               onClick={() => handleDeleteBacDaiHoc(selectedBacDaiHocId)}
                             >
@@ -1793,27 +1909,26 @@ const handleCloseEditModal = () => {
                             </button>
                           </div>
                         </div>
-                        
+
                         <div className="button-container" style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
                           <button className="hoc-ky-btn" onClick={handleAddHocKy}>
                             Thêm học kỳ
                           </button>
                         </div>
-                        
-                        {/* Display list of semesters */}
+
+                        {/* Hiển thị danh sách học kỳ */}
                         {hocKyByBacDaiHoc[selectedBacDaiHocId]?.map(hocKy => (
                           <div key={hocKy.id} className="hoc-ky-container">
                             <div className="hoc-ky-header">
                               <h3>{hocKy.name}</h3>
                               <div className="hoc-ky-actions">
-                                <button 
+                                <button
                                   className="add-mon-hoc-btn"
-                                  // Use the updated handler function here
-                                  onClick={() => handleAddMonHocClick(hocKy.id)} 
+                                  onClick={() => handleAddMonHocClick(hocKy.id)}
                                 >
                                   {selectedHocKyId === hocKy.id ? "Hủy thêm" : "Thêm môn học"}
                                 </button>
-                                <button 
+                                <button
                                   className="delete-btn"
                                   onClick={() => handleDeleteHocKy(hocKy.id)}
                                 >
@@ -1821,8 +1936,8 @@ const handleCloseEditModal = () => {
                                 </button>
                               </div>
                             </div>
-                            
-                            {/* Embedded course addition form - appears within the semester */}
+
+                            {/* Form thêm/chỉnh sửa môn học */}
                             {selectedHocKyId === hocKy.id && (
                               <div className="embedded-mon-hoc-form">
                                 <div className="form-row">
@@ -1836,7 +1951,7 @@ const handleCloseEditModal = () => {
                                     placeholder="Nhập mã môn học"
                                   />
                                 </div>
-                                
+
                                 <div className="form-row">
                                   <label htmlFor="tenMon">Tên môn học</label>
                                   <input
@@ -1848,8 +1963,7 @@ const handleCloseEditModal = () => {
                                     placeholder="Nhập tên môn học"
                                   />
                                 </div>
-                                
-                                {/* Thêm trường Loại hình */}
+
                                 <div className="form-row">
                                   <label htmlFor="loaiHinh">Loại hình</label>
                                   <input
@@ -1861,7 +1975,7 @@ const handleCloseEditModal = () => {
                                     placeholder="Nhập loại hình"
                                   />
                                 </div>
-                                
+
                                 <div className="form-row">
                                   <label htmlFor="soTinChi">Số tín chỉ</label>
                                   <input
@@ -1873,7 +1987,7 @@ const handleCloseEditModal = () => {
                                     placeholder="Nhập số tín chỉ"
                                   />
                                 </div>
-                                
+
                                 <div className="form-row checkbox-row">
                                   <label htmlFor="isNonCumulative">
                                     <input
@@ -1891,36 +2005,36 @@ const handleCloseEditModal = () => {
                                     <span className="checkbox-label">Không tính vào tín chỉ tích lũy</span>
                                   </label>
                                 </div>
-                                
+
                                 {creditError && (
                                   <div className="validation-error">
                                     {creditError}
                                   </div>
                                 )}
-                                
+
                                 <div className="form-actions">
-                                  <button 
-                                    className="confirm-btn" 
+                                  <button
+                                    className="confirm-btn"
                                     onClick={() => {
                                       // Validation logic
                                       if (!isMonHocFormValid) return;
-                                      
+
                                       // Calculate total credits, excluding non-cumulative courses
                                       const totalExistingCredits = calculateTotalCredits(selectedBacDaiHocId, true);
-                                      
+
                                       // Only check credit limit if this is a cumulative course
                                       if (!monHocData.isNonCumulative) {
                                         const newTotalCredits = totalExistingCredits + monHocData.soTinChi;
-                                        
+
                                         const bacDaiHoc = createdBacDaiHocs.find(b => b.id === selectedBacDaiHocId);
                                         if (!bacDaiHoc) return;
-                                        
+
                                         if (newTotalCredits > bacDaiHoc.soTinChi) {
                                           setCreditError(`Tổng số tín chỉ (${newTotalCredits}) vượt quá giới hạn (${bacDaiHoc.soTinChi})`);
                                           return;
                                         }
                                       }
-                                      
+
                                       // Add the course
                                       handleMonHocCreate();
                                     }}
@@ -1931,8 +2045,8 @@ const handleCloseEditModal = () => {
                                 </div>
                               </div>
                             )}
-                            
-                            {/* Display courses in this semester */}
+
+                            {/* Hiển thị danh sách môn học trong học kỳ */}
                             {hocKy.monHocList.length > 0 ? (
                               <div className="mon-hoc-list">
                                 <table className="mon-hoc-table">
@@ -1940,7 +2054,7 @@ const handleCloseEditModal = () => {
                                     <tr>
                                       <th>Mã môn học</th>
                                       <th>Tên môn học</th>
-                                      <th>Loại hình</th> {/* Thêm cột loại hình */}
+                                      <th>Loại hình</th>
                                       <th>Số tín chỉ</th>
                                       <th>Thao tác</th>
                                     </tr>
@@ -1955,16 +2069,16 @@ const handleCloseEditModal = () => {
                                             <span className="non-cumulative-badge">*</span>
                                           )}
                                         </td>
-                                        <td>{monHoc.loaiHinh || '-'}</td> {/* Hiển thị loại hình */}
+                                        <td>{monHoc.loaiHinh || '-'}</td>
                                         <td>{monHoc.soTinChi}</td>
                                         <td className="action-buttons">
-                                          <button 
+                                          <button
                                             className="action-btn edit-btn"
                                             onClick={() => handleEditMonHoc(hocKy.id, monHoc)}
                                           >
                                             Sửa
                                           </button>
-                                          <button 
+                                          <button
                                             className="action-btn delete-btn"
                                             onClick={() => handleDeleteMonHoc(hocKy.id, monHoc.id)}
                                           >
@@ -2006,10 +2120,10 @@ const handleCloseEditModal = () => {
                   </div>
                 )}
               </div>
-              
+
               <div className="modal-actions">
-                <button 
-                  className="confirm-btn" 
+                <button
+                  className="confirm-btn"
                   onClick={() => setShowAddConfirm(true)}
                   disabled={!isAddNganhFormValid()}
                 >
@@ -2023,17 +2137,17 @@ const handleCloseEditModal = () => {
           </motion.div>
         )}
       </AnimatePresence>
-      
+
       {/* Add Confirmation Modal */}
       <AnimatePresence>
         {showAddConfirm && (
-          <motion.div 
+          <motion.div
             className="confirmation-overlay"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
           >
-            <motion.div 
+            <motion.div
               className="confirmation-modal"
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
@@ -2041,7 +2155,7 @@ const handleCloseEditModal = () => {
               transition={{ type: "spring", damping: 20, stiffness: 300 }}
             >
               <h2 className="confirm-title">Bạn có xác nhận muốn tạo thông tin ngành không?</h2>
-              
+
               <div className="confirm-actions">
                 <button className="confirm-btn" onClick={handleConfirmAdd}>
                   Có
@@ -2054,17 +2168,17 @@ const handleCloseEditModal = () => {
           </motion.div>
         )}
       </AnimatePresence>
-      
+
       {/* Chuyên ngành Confirmation Modal */}
       <AnimatePresence>
         {showChuyenNganhConfirm && (
-          <motion.div 
+          <motion.div
             className="confirmation-overlay"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
           >
-            <motion.div 
+            <motion.div
               className="confirmation-modal"
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
@@ -2072,7 +2186,7 @@ const handleCloseEditModal = () => {
               transition={{ type: "spring", damping: 20, stiffness: 300 }}
             >
               <h2 className="confirm-title">Bạn có muốn xác nhận tạo chuyên ngành?</h2>
-              
+
               <div className="confirm-actions">
                 <button className="confirm-btn" onClick={handleChuyenNganhCreate}>
                   Có
@@ -2089,13 +2203,13 @@ const handleCloseEditModal = () => {
       {/* Bachelor Degree Confirmation Modal */}
       <AnimatePresence>
         {showBacDaiHocConfirm && (
-          <motion.div 
+          <motion.div
             className="confirmation-overlay"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
           >
-            <motion.div 
+            <motion.div
               className="confirmation-modal"
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
@@ -2103,7 +2217,7 @@ const handleCloseEditModal = () => {
               transition={{ type: "spring", damping: 20, stiffness: 300 }}
             >
               <h2 className="confirm-title">Bạn có muốn xác nhận tạo bậc đại học?</h2>
-              
+
               <div className="confirm-actions">
                 <button className="confirm-btn" onClick={handleBacDaiHocCreate}>
                   Có
@@ -2120,13 +2234,13 @@ const handleCloseEditModal = () => {
       {/* Chuyên ngành Delete Confirmation Modal */}
       <AnimatePresence>
         {showDeleteChuyenNganhConfirm && (
-          <motion.div 
+          <motion.div
             className="modal-overlay"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
           >
-            <motion.div 
+            <motion.div
               className="confirmation-modal"
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
@@ -2134,7 +2248,7 @@ const handleCloseEditModal = () => {
               transition={{ type: "spring", damping: 20, stiffness: 300 }}
             >
               <h2 className="confirm-title">Bạn có chắc chắn muốn xóa chuyên ngành này?</h2>
-              
+
               <div className="confirm-actions">
                 <button className="confirm-btn" onClick={confirmDeleteChuyenNganh}>
                   Có
@@ -2151,13 +2265,13 @@ const handleCloseEditModal = () => {
       {/* Bachelor Degree Delete Confirmation Modal */}
       <AnimatePresence>
         {showDeleteBacDaiHocConfirm && (
-          <motion.div 
+          <motion.div
             className="confirmation-overlay"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
           >
-            <motion.div 
+            <motion.div
               className="confirmation-modal"
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
@@ -2165,7 +2279,7 @@ const handleCloseEditModal = () => {
               transition={{ type: "spring", damping: 20, stiffness: 300 }}
             >
               <h2 className="confirm-title">Bạn có chắc chắn muốn xóa bậc đại học này?</h2>
-              
+
               <div className="confirm-actions">
                 <button className="confirm-btn" onClick={confirmDeleteBacDaiHoc}>
                   Có
@@ -2180,626 +2294,627 @@ const handleCloseEditModal = () => {
       </AnimatePresence>
 
       <AnimatePresence>
-  {showEditModal && (
-    <motion.div 
-      className="modal-overlay"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-    >
-      <motion.div 
-        className="create-nganh-modal"
-        initial={{ scale: 0.9, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        exit={{ scale: 0.9, opacity: 0 }}
-        transition={{ type: "spring", damping: 20, stiffness: 300 }}
-      >
-        <h2 className="modal-title">Chỉnh sửa thông tin ngành học</h2>
-        
-        <div className="nganh-form">
-          <div className="form-row">
-            <label htmlFor="maNganh">Mã ngành</label>
-            <input
-              type="text"
-              id="maNganh"
-              name="maNganh"
-              value={formData.maNganh}
-              onChange={handleInputChange}
-            />
-          </div>
-          
-          <div className="form-row">
-            <label htmlFor="tenNganh">Ngành</label>
-            <input
-              type="text"
-              id="tenNganh"
-              name="tenNganh"
-              value={formData.tenNganh}
-              onChange={handleInputChange}
-            />
-          </div>
-          
-          <div className="form-row">
-            <label htmlFor="khoa">Khoa</label>
-            <input
-              type="text"
-              id="khoa"
-              name="khoa"
-              value={formData.khoa}
-              onChange={handleInputChange}
-            />
-          </div>
+        {showEditModal && (
+          <motion.div
+            className="modal-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div
+              className="create-nganh-modal"
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              transition={{ type: "spring", damping: 20, stiffness: 300 }}
+            >
+              <h2 className="modal-title">Chỉnh sửa thông tin ngành học</h2>
 
-          {/* Add the specialized majors dropdown right here */}
-          {availableSpecializations.length > 1 && (
-  <div className="specialized-major-dropdown-container">
-    <label htmlFor="specializedMajorDropdown">Chọn Chuyên ngành:</label>
-    <Select
-      id="specializedMajorDropdown"
-      className="specialized-major-dropdown"
-      value={
-        selectedSpecializationId
-          ? { value: selectedSpecializationId, label: availableSpecializations.find(s => s.id === selectedSpecializationId)?.name || '' }
-          : null
-      }
-      onChange={(option) => {
-        if (!option) return;
-
-        const newSpecializationId = option.value;
-        setSelectedSpecializationId(newSpecializationId); // Update dropdown selection state
-
-        // Find the major details for this newly selected specialization in the main store
-        const detailsArray = majorDetailsDataStore[formData.maNganh] || [];
-        const selectedDetails = detailsArray.find(d => d.id === newSpecializationId);
-
-        if (selectedDetails) {
-          // --- Case 1: Specialization exists in the store (already saved) ---
-          // ... (code for loading existing data - remains the same) ...
-          console.log("Loading existing specialization details from store:", newSpecializationId);
-          setEditingMajorDetails(selectedDetails);
-          setConfirmedChuyenNganh(selectedDetails.chuyenNganh);
-          setSelectedChuyenNganhId(newSpecializationId);
-
-          const bacDaiHocList = selectedDetails.bacDaoTaoList.map((bac, index) => ({
-            id: bac.id || index + 1,
-            ten: bac.tenBac,
-            soTinChi: bac.tongTinChi
-          }));
-          setCreatedBacDaiHocs(bacDaiHocList);
-
-          setBacDaiHocByChuyenNganh(prev => ({
-              ...prev,
-              [newSpecializationId]: bacDaiHocList
-          }));
-
-          const hocKyMapping: {[bacId: number]: HocKy[]} = {};
-          let firstBacDaiHocId: number | null = null;
-          selectedDetails.bacDaoTaoList.forEach((bac, index) => {
-            const bacId = bac.id || index + 1;
-            if (index === 0) firstBacDaiHocId = bacId;
-            hocKyMapping[bacId] = bac.hocKyList || [];
-          });
-          setHocKyByBacDaiHoc(hocKyMapping); // Overwrite with stored data
-
-          if (bacDaiHocList.length > 0 && firstBacDaiHocId !== null) {
-            setSelectedBacDaiHocId(firstBacDaiHocId);
-            setConfirmedBacDaiHoc({
-              ten: bacDaiHocList[0].ten,
-              soTinChi: bacDaiHocList[0].soTinChi
-            });
-            setShowHocKyButton(true);
-          } else {
-            setSelectedBacDaiHocId(null);
-            setConfirmedBacDaiHoc(null);
-            setShowHocKyButton(false);
-          }
-        } else {
-          // --- Case 2: Specialization does NOT exist in the store (newly created in this session) ---
-          console.log("Loading new specialization details from component state:", newSpecializationId);
-          const specInfo = availableSpecializations.find(s => s.id === newSpecializationId);
-          if (specInfo) {
-              setConfirmedChuyenNganh(specInfo.name);
-          } else {
-              setConfirmedChuyenNganh('');
-              console.error("Could not find name for new specialization ID:", newSpecializationId);
-          }
-          setSelectedChuyenNganhId(newSpecializationId);
-          setEditingMajorDetails(null);
-
-          // Load bachelor degrees from component state map
-          const bacDaiHocList = bacDaiHocByChuyenNganh[newSpecializationId] || [];
-          setCreatedBacDaiHocs(bacDaiHocList); // Update display/dropdown
-
-          // *** FIX: Correctly handle semester data loading for the selected bachelor degree ***
-          if (bacDaiHocList.length > 0) {
-            const firstBacDaiHocId = bacDaiHocList[0].id; // Get the ID of the first bachelor degree
-            setSelectedBacDaiHocId(firstBacDaiHocId);
-            setConfirmedBacDaiHoc({
-              ten: bacDaiHocList[0].ten,
-              soTinChi: bacDaiHocList[0].soTinChi
-            });
-            setShowHocKyButton(true);
-
-            // Ensure the hocKyByBacDaiHoc state has an entry for this bachelor degree ID.
-            // If it doesn't exist (e.g., first time selecting after creation), initialize it.
-            // This prevents carrying over data from another specialization's bachelor degree.
-            if (!hocKyByBacDaiHoc[firstBacDaiHocId]) {
-                 setHocKyByBacDaiHoc(prev => ({
-                     ...prev,
-                     [firstBacDaiHocId]: [] // Initialize if not present
-                 }));
-            }
-            // No need to explicitly load semesters here, as they should be in hocKyByBacDaiHoc
-            // if they were added. The key is ensuring the entry exists and isn't stale data.
-
-          } else {
-            // No bachelor degrees yet for this new specialization
-            setSelectedBacDaiHocId(null);
-            setConfirmedBacDaiHoc(null);
-            setShowHocKyButton(false);
-          }
-        }
-      }}
-      options={availableSpecializations.map(s => ({ value: s.id, label: s.name }))}
-      placeholder="Chọn chuyên ngành"
-      isClearable={false}
-    />
-  </div>
-)}
-          
-          {/* Hiển thị phần chuyên ngành nếu có */}
-          {!showChuyenNganhForm && formData.maNganh && formData.tenNganh && formData.khoa && (
-            <div className="button-container" style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
-              <button className="chuyen-nganh-btn" onClick={handleAddChuyenNganh}>
-                {confirmedChuyenNganh ? "Thêm Chuyên ngành" : "Thêm Chuyên ngành"}
-              </button>
-            </div>
-          )}
-
-          {/* Hiển thị form chuyên ngành */}
-          {showChuyenNganhForm && (
-            <div className="chuyen-nganh-form">
-              <div className="form-row">
-                <label htmlFor="tenChuyenNganh">Tên Chuyên ngành</label>
-                <input
-                  type="text"
-                  id="tenChuyenNganh"
-                  name="tenChuyenNganh"
-                  value={chuyenNganhName}
-                  onChange={handleChuyenNganhNameChange}
-                  placeholder="Nhập tên chuyên ngành"
-                />
-              </div>
-              
-              <div className="chuyen-nganh-actions">
-                <button 
-                  className="confirm-btn" 
-                  onClick={handleChuyenNganhConfirmOpen}
-                  disabled={!chuyenNganhName.trim()}
-                >
-                  Xác nhận
-                </button>
-                <button 
-                  className="cancel-btn" 
-                  onClick={handleChuyenNganhCancel}
-                >
-                  Hủy
-                </button>
-              </div>
-            </div>
-          )}
-          
-          {/* Hiển thị thông tin chuyên ngành */}
-          {showBacDaiHocButton && confirmedChuyenNganh && selectedChuyenNganhId && (
-            <div className="added-chuyen-nganh">
-              <div className="chuyen-nganh-header">
-                <div className="chuyen-nganh-info">
-                  <span className="chuyen-nganh-label">Chuyên ngành:</span>
-                  <span className="chuyen-nganh-value">{confirmedChuyenNganh}</span>
-                </div>
-                <div className="chuyen-nganh-actions">
-                  <button 
-                    className="edit-btn"
-                    onClick={() => handleEditChuyenNganh(selectedChuyenNganhId)}
-                  >
-                    Sửa
-                  </button>
-                  <button 
-                    className="delete-btn"
-                    onClick={() => handleDeleteChuyenNganh(selectedChuyenNganhId)}
-                  >
-                    Xóa
-                  </button>
-                </div>
-              </div>
-              
-              {/* Button thêm bậc đại học */}
-              {!showBacDaiHocForm && (
-                <div className="button-container" style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
-                  <button className="bac-dai-hoc-btn" onClick={handleAddBacDaiHoc}>
-                    {createdBacDaiHocs.length > 0 ? "Thêm Bậc đại học" : "Thêm Bậc đại học"}
-                  </button>
-                </div>
-              )}
-              
-              {/* Dropdown chọn bậc đại học */}
-              {createdBacDaiHocs.length > 0 && (
-                <div className="bac-dai-hoc-dropdown-container">
-                  <label htmlFor="bacDaiHocDropdown">Chọn Bậc đại học:</label>
-                  <Select
-                    id="bacDaiHocDropdown"
-                    className="bac-dai-hoc-dropdown"
-                    value={selectedBacDaiHocId ? 
-                      { 
-                        value: selectedBacDaiHocId, 
-                        label: createdBacDaiHocs.find(bd => bd.id === selectedBacDaiHocId)?.ten || '' 
-                      } : 
-                      null
-                    }
-                    onChange={handleBacDaiHocSelectChange}
-                    options={createdBacDaiHocs.map(bd => ({ 
-                      value: bd.id, 
-                      label: `${bd.ten} (${bd.soTinChi} tín chỉ)`
-                    }))}
-                    placeholder="Chọn bậc đại học"
-                    isClearable={false}
+              <div className="nganh-form">
+                <div className="form-row">
+                  <label htmlFor="maNganh">Mã ngành</label>
+                  <input
+                    type="text"
+                    id="maNganh"
+                    name="maNganh"
+                    value={formData.maNganh}
+                    onChange={handleInputChange}
                   />
                 </div>
-              )}
-              
-              {/* Form thêm/chỉnh sửa bậc đại học */}
-              {showBacDaiHocForm && (
-                <div className="bac-dai-hoc-form">
-                  <div className="form-row">
-                    <label htmlFor="ten">Tên bậc đại học</label>
-                    <input
-                      type="text"
-                      id="ten"
-                      name="ten"
-                      value={bacDaiHocData.ten}
-                      onChange={handleBacDaiHocInputChange}
-                      placeholder="Nhập tên bậc đại học"
-                    />
-                  </div>
-                  
-                  <div className="form-row">
-                    <label htmlFor="soTinChi">Số tín chỉ</label>
-                    <input
-                      type="number"
-                      id="soTinChi"
-                      name="soTinChi"
-                      value={bacDaiHocData.soTinChi || ''}
-                      onChange={handleBacDaiHocInputChange}
-                      placeholder="Nhập số tín chỉ (>100)"
-                    />
-                  </div>
-                  
-                  {bacDaiHocData.soTinChi > 0 && bacDaiHocData.soTinChi <= 100 && (
-                    <div className="validation-error">
-                      Số tín chỉ phải lớn hơn 100
-                    </div>
-                  )}
-                  
-                  <div className="bac-dai-hoc-actions">
-                    <button 
-                      className="confirm-btn" 
-                      onClick={handleBacDaiHocConfirmOpen}
-                      disabled={!isBacDaiHocFormValid}
-                    >
-                      Xác nhận
-                    </button>
-                    <button 
-                      className="cancel-btn" 
-                      onClick={handleBacDaiHocCancel}
-                    >
-                      Hủy
-                    </button>
-                  </div>
+
+                <div className="form-row">
+                  <label htmlFor="tenNganh">Ngành</label>
+                  <input
+                    type="text"
+                    id="tenNganh"
+                    name="tenNganh"
+                    value={formData.tenNganh}
+                    onChange={handleInputChange}
+                  />
                 </div>
-              )}
-              
-              {/* Hiển thị thông tin bậc đại học đã chọn */}
-              {confirmedBacDaiHoc && selectedBacDaiHocId && (
-                <div className="added-bac-dai-hoc">
-                  <div className="bac-dai-hoc-header">
-                    <div className="bac-dai-hoc-info">
-                      <div className="info-row">
-                        <span className="info-label">Bậc đại học:</span>
-                        <span className="info-value">{confirmedBacDaiHoc.ten}</span>
-                      </div>
-                      <div className="info-row">
-                        <span className="info-label">Số tín chỉ:</span>
-                        <span className="info-value">{confirmedBacDaiHoc.soTinChi}</span>
-                      </div>
-                      <div className="info-row">
-                        <span className="info-label">Đã sử dụng:</span>
-                        <span className="info-value">{calculateTotalCredits(selectedBacDaiHocId, true)} tín chỉ</span>
-                      </div>
-                      <div className="info-row">
-                        <span className="info-label">Tổng tín chỉ:</span>
-                        <span className="info-value">{confirmedBacDaiHoc.soTinChi}</span>
-                      </div>
-                    </div>
-                    <div className="bac-dai-hoc-actions">
-                      <button 
-                        className="edit-btn"
-                        onClick={() => handleEditBacDaiHoc(selectedBacDaiHocId)}
-                      >
-                        Sửa
-                      </button>
-                      <button 
-                        className="delete-btn"
-                        onClick={() => handleDeleteBacDaiHoc(selectedBacDaiHocId)}
-                      >
-                        Xóa
-                      </button>
-                    </div>
+
+                <div className="form-row">
+                  <label htmlFor="khoa">Khoa</label>
+                  <input
+                    type="text"
+                    id="khoa"
+                    name="khoa"
+                    value={formData.khoa}
+                    onChange={handleInputChange}
+                  />
+                </div>
+
+                {/* Add the specialized majors dropdown right here */}
+                {availableSpecializations.length > 1 && (
+                  <div className="specialized-major-dropdown-container">
+                    <label htmlFor="specializedMajorDropdown">Chọn Chuyên ngành:</label>
+                    <Select
+                      id="specializedMajorDropdown"
+                      className="specialized-major-dropdown"
+                      value={
+                        selectedSpecializationId
+                          ? { value: selectedSpecializationId, label: availableSpecializations.find(s => s.id === selectedSpecializationId)?.name || '' }
+                          : null
+                      }
+                      onChange={(option) => {
+                        if (!option) return;
+
+                        const newSpecializationId = option.value;
+                        setSelectedSpecializationId(newSpecializationId); // Update dropdown selection state
+
+                        // Find the major details for this newly selected specialization in the main store
+                        const detailsArray = majorDetailsDataStore[formData.maNganh] || [];
+                        const selectedDetails = detailsArray.find(d => d.id === newSpecializationId);
+
+                        if (selectedDetails) {
+                          // --- Case 1: Specialization exists in the store (already saved) ---
+                          // ... (code for loading existing data - remains the same) ...
+                          console.log("Loading existing specialization details from store:", newSpecializationId);
+                          setEditingMajorDetails(selectedDetails);
+                          setConfirmedChuyenNganh(selectedDetails.chuyenNganh);
+                          setSelectedChuyenNganhId(newSpecializationId);
+
+                          const bacDaiHocList = selectedDetails.bacDaoTaoList.map((bac, index) => ({
+                            id: bac.id || index + 1,
+                            ten: bac.tenBac,
+                            soTinChi: bac.tongTinChi
+                          }));
+                          setCreatedBacDaiHocs(bacDaiHocList);
+
+                          setBacDaiHocByChuyenNganh(prev => ({
+                            ...prev,
+                            [newSpecializationId]: bacDaiHocList
+                          }));
+
+                          const hocKyMapping: { [bacId: number]: HocKy[] } = {};
+                          let firstBacDaiHocId: number | null = null;
+                          selectedDetails.bacDaoTaoList.forEach((bac, index) => {
+                            const bacId = bac.id || index + 1; // Use consistent ID
+                            if (index === 0) firstBacDaiHocId = bacId; // Get ID of the first one
+                            hocKyMapping[bacId] = bac.hocKyList || [];
+                          });
+                          setHocKyByBacDaiHoc(hocKyMapping); // Overwrite with stored data
+
+                          if (bacDaiHocList.length > 0 && firstBacDaiHocId !== null) {
+                            setSelectedBacDaiHocId(firstBacDaiHocId);
+                            setConfirmedBacDaiHoc({
+                              ten: bacDaiHocList[0].ten,
+                              soTinChi: bacDaiHocList[0].soTinChi
+                            });
+                            setShowHocKyButton(true);
+                          } else {
+                            // No bachelor degrees loaded
+                            setSelectedBacDaiHocId(null);
+                            setConfirmedBacDaiHoc(null);
+                            setShowHocKyButton(false); // Or true if you want to allow adding immediately
+                          }
+                        } else {
+                          // --- Case 2: Specialization does NOT exist in the store (newly created in this session) ---
+                          console.log("Loading new specialization details from component state:", newSpecializationId);
+                          const specInfo = availableSpecializations.find(s => s.id === newSpecializationId);
+                          if (specInfo) {
+                            setConfirmedChuyenNganh(specInfo.name);
+                          } else {
+                            setConfirmedChuyenNganh('');
+                            console.error("Could not find name for new specialization ID:", newSpecializationId);
+                          }
+                          setSelectedChuyenNganhId(newSpecializationId);
+                          setEditingMajorDetails(null);
+
+                          // Load bachelor degrees from component state map
+                          const bacDaiHocList = bacDaiHocByChuyenNganh[newSpecializationId] || [];
+                          setCreatedBacDaiHocs(bacDaiHocList); // Update display/dropdown
+
+                          // *** FIX: Correctly handle semester data loading for the selected bachelor degree ***
+                          if (bacDaiHocList.length > 0) {
+                            const firstBacDaiHocId = bacDaiHocList[0].id; // Get the ID of the first bachelor degree
+                            setSelectedBacDaiHocId(firstBacDaiHocId);
+                            setConfirmedBacDaiHoc({
+                              ten: bacDaiHocList[0].ten,
+                              soTinChi: bacDaiHocList[0].soTinChi
+                            });
+                            setShowHocKyButton(true);
+
+                            // Ensure the hocKyByBacDaiHoc state has an entry for this bachelor degree ID.
+                            // If it doesn't exist (e.g., first time selecting after creation), initialize it.
+                            // This prevents carrying over data from another specialization's bachelor degree.
+                            if (!hocKyByBacDaiHoc[firstBacDaiHocId]) {
+                              setHocKyByBacDaiHoc(prev => ({
+                                ...prev,
+                                [firstBacDaiHocId]: [] // Initialize if not present
+                              }));
+                            }
+                            // No need to explicitly load semesters here, as they should be in hocKyByBacDaiHoc
+                            // if they were added. The key is ensuring the entry exists and isn't stale data.
+
+                          } else {
+                            // No bachelor degrees yet for this new specialization
+                            setSelectedBacDaiHocId(null);
+                            setConfirmedBacDaiHoc(null);
+                            setShowHocKyButton(false);
+                          }
+                        }
+                      }}
+                      options={availableSpecializations.map(s => ({ value: s.id, label: s.name }))}
+                      placeholder="Chọn chuyên ngành"
+                      isClearable={false}
+                    />
                   </div>
-                  
+                )}
+
+                {/* Hiển thị phần chuyên ngành nếu có */}
+                {!showChuyenNganhForm && formData.maNganh && formData.tenNganh && formData.khoa && (
                   <div className="button-container" style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
-                    <button className="hoc-ky-btn" onClick={handleAddHocKy}>
-                      Thêm học kỳ
+                    <button className="chuyen-nganh-btn" onClick={handleAddChuyenNganh}>
+                      {confirmedChuyenNganh ? "Thêm Chuyên ngành" : "Thêm Chuyên ngành"}
                     </button>
                   </div>
-                  
-                  {/* Hiển thị danh sách học kỳ */}
-                  {hocKyByBacDaiHoc[selectedBacDaiHocId]?.map(hocKy => (
-                    <div key={hocKy.id} className="hoc-ky-container">
-                      <div className="hoc-ky-header">
-                        <h3>{hocKy.name}</h3>
-                        <div className="hoc-ky-actions">
-                          <button 
-                            className="add-mon-hoc-btn"
-                            onClick={() => handleAddMonHocClick(hocKy.id)} 
+                )}
+
+                {/* Hiển thị form chuyên ngành */}
+                {showChuyenNganhForm && (
+                  <div className="chuyen-nganh-form">
+                    <div className="form-row">
+                      <label htmlFor="tenChuyenNganh">Tên Chuyên ngành</label>
+                      <input
+                        type="text"
+                        id="tenChuyenNganh"
+                        name="tenChuyenNganh"
+                        value={chuyenNganhName}
+                        onChange={handleChuyenNganhNameChange}
+                        placeholder="Nhập tên chuyên ngành"
+                      />
+                    </div>
+
+                    <div className="chuyen-nganh-actions">
+                      <button
+                        className="confirm-btn"
+                        onClick={handleChuyenNganhConfirmOpen}
+                        disabled={!chuyenNganhName.trim()}
+                      >
+                        Xác nhận
+                      </button>
+                      <button
+                        className="cancel-btn"
+                        onClick={handleChuyenNganhCancel}
+                      >
+                        Hủy
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Hiển thị thông tin chuyên ngành */}
+                {showBacDaiHocButton && confirmedChuyenNganh && selectedChuyenNganhId && (
+                  <div className="added-chuyen-nganh">
+                    <div className="chuyen-nganh-header">
+                      <div className="chuyen-nganh-info">
+                        <span className="chuyen-nganh-label">Chuyên ngành:</span>
+                        <span className="chuyen-nganh-value">{confirmedChuyenNganh}</span>
+                      </div>
+                      <div className="chuyen-nganh-actions">
+                        <button
+                          className="edit-btn"
+                          onClick={() => handleEditChuyenNganh(selectedChuyenNganhId)}
+                        >
+                          Sửa
+                        </button>
+                        <button
+                          className="delete-btn"
+                          onClick={() => handleDeleteChuyenNganh(selectedChuyenNganhId)}
+                        >
+                          Xóa
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Button thêm bậc đại học */}
+                    {!showBacDaiHocForm && (
+                      <div className="button-container" style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
+                        <button className="bac-dai-hoc-btn" onClick={handleAddBacDaiHoc}>
+                          {createdBacDaiHocs.length > 0 ? "Thêm Bậc đại học" : "Thêm Bậc đại học"}
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Dropdown chọn bậc đại học */}
+                    {createdBacDaiHocs.length > 0 && (
+                      <div className="bac-dai-hoc-dropdown-container">
+                        <label htmlFor="bacDaiHocDropdown">Chọn Bậc đại học:</label>
+                        <Select
+                          id="bacDaiHocDropdown"
+                          className="bac-dai-hoc-dropdown"
+                          value={selectedBacDaiHocId ?
+                            {
+                              value: selectedBacDaiHocId,
+                              label: createdBacDaiHocs.find(bd => bd.id === selectedBacDaiHocId)?.ten || ''
+                            } :
+                            null
+                          }
+                          onChange={handleBacDaiHocSelectChange}
+                          options={createdBacDaiHocs.map(bd => ({
+                            value: bd.id,
+                            label: `${bd.ten} (${bd.soTinChi} tín chỉ)`
+                          }))}
+                          placeholder="Chọn bậc đại học"
+                          isClearable={false}
+                        />
+                      </div>
+                    )}
+
+                    {/* Form thêm/chỉnh sửa bậc đại học */}
+                    {showBacDaiHocForm && (
+                      <div className="bac-dai-hoc-form">
+                        <div className="form-row">
+                          <label htmlFor="ten">Tên bậc đại học</label>
+                          <input
+                            type="text"
+                            id="ten"
+                            name="ten"
+                            value={bacDaiHocData.ten}
+                            onChange={handleBacDaiHocInputChange}
+                            placeholder="Nhập tên bậc đại học"
+                          />
+                        </div>
+
+                        <div className="form-row">
+                          <label htmlFor="soTinChi">Số tín chỉ</label>
+                          <input
+                            type="number"
+                            id="soTinChi"
+                            name="soTinChi"
+                            value={bacDaiHocData.soTinChi || ''}
+                            onChange={handleBacDaiHocInputChange}
+                            placeholder="Nhập số tín chỉ (>100)"
+                          />
+                        </div>
+
+                        {bacDaiHocData.soTinChi > 0 && bacDaiHocData.soTinChi <= 100 && (
+                          <div className="validation-error">
+                            Số tín chỉ phải lớn hơn 100
+                          </div>
+                        )}
+
+                        <div className="bac-dai-hoc-actions">
+                          <button
+                            className="confirm-btn"
+                            onClick={handleBacDaiHocConfirmOpen}
+                            disabled={!isBacDaiHocFormValid}
                           >
-                            {selectedHocKyId === hocKy.id ? "Hủy thêm" : "Thêm môn học"}
+                            Xác nhận
                           </button>
-                          <button 
-                            className="delete-btn"
-                            onClick={() => handleDeleteHocKy(hocKy.id)}
+                          <button
+                            className="cancel-btn"
+                            onClick={handleBacDaiHocCancel}
                           >
-                            Xóa học kỳ
+                            Hủy
                           </button>
                         </div>
                       </div>
-                      
-                      {/* Form thêm/chỉnh sửa môn học */}
-                      {selectedHocKyId === hocKy.id && (
-                        <div className="embedded-mon-hoc-form">
-                          <div className="form-row">
-                            <label htmlFor="maMon">Mã môn học</label>
-                            <input
-                              type="text"
-                              id="maMon"
-                              name="maMon"
-                              value={monHocData.maMon}
-                              onChange={handleMonHocInputChange}
-                              placeholder="Nhập mã môn học"
-                            />
-                          </div>
-                          
-                          <div className="form-row">
-                            <label htmlFor="tenMon">Tên môn học</label>
-                            <input
-                              type="text"
-                              id="tenMon"
-                              name="tenMon"
-                              value={monHocData.tenMon}
-                              onChange={handleMonHocInputChange}
-                              placeholder="Nhập tên môn học"
-                            />
-                          </div>
-                          
-                          <div className="form-row">
-                            <label htmlFor="loaiHinh">Loại hình</label>
-                            <input
-                              type="text"
-                              id="loaiHinh"
-                              name="loaiHinh"
-                              value={monHocData.loaiHinh || ''}
-                              onChange={handleMonHocInputChange}
-                              placeholder="Nhập loại hình"
-                            />
-                          </div>
-                          
-                          <div className="form-row">
-                            <label htmlFor="soTinChi">Số tín chỉ</label>
-                            <input
-                              type="number"
-                              id="soTinChi"
-                              name="soTinChi"
-                              value={monHocData.soTinChi || ''}
-                              onChange={handleMonHocInputChange}
-                              placeholder="Nhập số tín chỉ"
-                            />
-                          </div>
-                          
-                          <div className="form-row checkbox-row">
-                            <label htmlFor="isNonCumulative">
-                              <input
-                                type="checkbox"
-                                id="isNonCumulative"
-                                name="isNonCumulative"
-                                checked={monHocData.isNonCumulative || false}
-                                onChange={(e) => {
-                                  setMonHocData(prev => ({
-                                    ...prev,
-                                    isNonCumulative: e.target.checked
-                                  }));
-                                }}
-                              />
-                              <span className="checkbox-label">Không tính vào tín chỉ tích lũy</span>
-                            </label>
-                          </div>
-                          
-                          {creditError && (
-                            <div className="validation-error">
-                              {creditError}
+                    )}
+
+                    {/* Hiển thị thông tin bậc đại học đã chọn */}
+                    {confirmedBacDaiHoc && selectedBacDaiHocId && (
+                      <div className="added-bac-dai-hoc">
+                        <div className="bac-dai-hoc-header">
+                          <div className="bac-dai-hoc-info">
+                            <div className="info-row">
+                              <span className="info-label">Bậc đại học:</span>
+                              <span className="info-value">{confirmedBacDaiHoc.ten}</span>
                             </div>
-                          )}
-                          
-                          <div className="form-actions">
-                            <button 
-                              className="confirm-btn" 
-                              onClick={handleMonHocCreate}
-                              disabled={!isMonHocFormValid}
+                            <div className="info-row">
+                              <span className="info-label">Số tín chỉ:</span>
+                              <span className="info-value">{confirmedBacDaiHoc.soTinChi}</span>
+                            </div>
+                            <div className="info-row">
+                              <span className="info-label">Đã sử dụng:</span>
+                              <span className="info-value">{calculateTotalCredits(selectedBacDaiHocId, true)} tín chỉ</span>
+                            </div>
+                            <div className="info-row">
+                              <span className="info-label">Tổng tín chỉ:</span>
+                              <span className="info-value">{confirmedBacDaiHoc.soTinChi}</span>
+                            </div>
+                          </div>
+                          <div className="bac-dai-hoc-actions">
+                            <button
+                              className="edit-btn"
+                              onClick={() => handleEditBacDaiHoc(selectedBacDaiHocId)}
                             >
-                              {editingMonHocId !== null ? "Cập nhật" : "Thêm"}
+                              Sửa
+                            </button>
+                            <button
+                              className="delete-btn"
+                              onClick={() => handleDeleteBacDaiHoc(selectedBacDaiHocId)}
+                            >
+                              Xóa
                             </button>
                           </div>
                         </div>
-                      )}
-                      
-                      {/* Hiển thị danh sách môn học trong học kỳ */}
-                      {hocKy.monHocList.length > 0 ? (
-                        <div className="mon-hoc-list">
-                          <table className="mon-hoc-table">
-                            <thead>
-                              <tr>
-                                <th>Mã môn học</th>
-                                <th>Tên môn học</th>
-                                <th>Loại hình</th>
-                                <th>Số tín chỉ</th>
-                                <th>Thao tác</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {hocKy.monHocList.map(monHoc => (
-                                <tr key={monHoc.id} className={monHoc.isNonCumulative ? "non-cumulative-course" : ""}>
-                                  <td>{monHoc.maMon}</td>
-                                  <td>
-                                    {monHoc.tenMon}
-                                    {monHoc.isNonCumulative && (
-                                      <span className="non-cumulative-badge">*</span>
-                                    )}
-                                  </td>
-                                  <td>{monHoc.loaiHinh || '-'}</td>
-                                  <td>{monHoc.soTinChi}</td>
-                                  <td className="action-buttons">
-                                    <button 
-                                      className="action-btn edit-btn"
-                                      onClick={() => handleEditMonHoc(hocKy.id, monHoc)}
-                                    >
-                                      Sửa
-                                    </button>
-                                    <button 
-                                      className="action-btn delete-btn"
-                                      onClick={() => handleDeleteMonHoc(hocKy.id, monHoc.id)}
-                                    >
-                                      Xóa
-                                    </button>
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                            <tfoot>
-                              <tr>
-                                <td colSpan={3} style={{ textAlign: 'right', fontWeight: 'bold' }}>Tổng tín chỉ:</td>
-                                <td colSpan={2} style={{ fontWeight: 'bold' }}>
-                                  {hocKy.monHocList.reduce((sum, mh) => sum + mh.soTinChi, 0)}
-                                </td>
-                              </tr>
-                              <tr>
-                                <td colSpan={3} style={{ textAlign: 'right' }}>Tích lũy:</td>
-                                <td colSpan={2}>
-                                  {hocKy.monHocList.reduce((sum, mh) => mh.isNonCumulative ? sum : sum + mh.soTinChi, 0)}
-                                </td>
-                              </tr>
-                              <tr>
-                                <td colSpan={3} style={{ textAlign: 'right' }}>Không tích lũy:</td>
-                                <td colSpan={2}>
-                                  {hocKy.monHocList.reduce((sum, mh) => mh.isNonCumulative ? sum + mh.soTinChi : sum, 0)}
-                                </td>
-                              </tr>
-                            </tfoot>
-                          </table>
+
+                        <div className="button-container" style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
+                          <button className="hoc-ky-btn" onClick={handleAddHocKy}>
+                            Thêm học kỳ
+                          </button>
                         </div>
-                      ) : (
-                        <div className="no-mon-hoc">Chưa có môn học nào</div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-        
-        <div className="modal-actions">
-          <button 
-            className="confirm-btn" 
-            onClick={() => setShowEditConfirm(true)}
-            disabled={!isAddNganhFormValid()}
-          >
-            Xác nhận
-          </button>
-          <button className="cancel-btn" onClick={handleCloseEditModal}>
-            Hủy
-          </button>
-        </div>
-      </motion.div>
-    </motion.div>
-  )}
+
+                        {/* Hiển thị danh sách học kỳ */}
+                        {hocKyByBacDaiHoc[selectedBacDaiHocId]?.map(hocKy => (
+                          <div key={hocKy.id} className="hoc-ky-container">
+                            <div className="hoc-ky-header">
+                              <h3>{hocKy.name}</h3>
+                              <div className="hoc-ky-actions">
+                                <button
+                                  className="add-mon-hoc-btn"
+                                  onClick={() => handleAddMonHocClick(hocKy.id)}
+                                >
+                                  {selectedHocKyId === hocKy.id ? "Hủy thêm" : "Thêm môn học"}
+                                </button>
+                                <button
+                                  className="delete-btn"
+                                  onClick={() => handleDeleteHocKy(hocKy.id)}
+                                >
+                                  Xóa học kỳ
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Form thêm/chỉnh sửa môn học */}
+                            {selectedHocKyId === hocKy.id && (
+                              <div className="embedded-mon-hoc-form">
+                                <div className="form-row">
+                                  <label htmlFor="maMon">Mã môn học</label>
+                                  <input
+                                    type="text"
+                                    id="maMon"
+                                    name="maMon"
+                                    value={monHocData.maMon}
+                                    onChange={handleMonHocInputChange}
+                                    placeholder="Nhập mã môn học"
+                                  />
+                                </div>
+
+                                <div className="form-row">
+                                  <label htmlFor="tenMon">Tên môn học</label>
+                                  <input
+                                    type="text"
+                                    id="tenMon"
+                                    name="tenMon"
+                                    value={monHocData.tenMon}
+                                    onChange={handleMonHocInputChange}
+                                    placeholder="Nhập tên môn học"
+                                  />
+                                </div>
+
+                                <div className="form-row">
+                                  <label htmlFor="loaiHinh">Loại hình</label>
+                                  <input
+                                    type="text"
+                                    id="loaiHinh"
+                                    name="loaiHinh"
+                                    value={monHocData.loaiHinh || ''}
+                                    onChange={handleMonHocInputChange}
+                                    placeholder="Nhập loại hình"
+                                  />
+                                </div>
+
+                                <div className="form-row">
+                                  <label htmlFor="soTinChi">Số tín chỉ</label>
+                                  <input
+                                    type="number"
+                                    id="soTinChi"
+                                    name="soTinChi"
+                                    value={monHocData.soTinChi || ''}
+                                    onChange={handleMonHocInputChange}
+                                    placeholder="Nhập số tín chỉ"
+                                  />
+                                </div>
+
+                                <div className="form-row checkbox-row">
+                                  <label htmlFor="isNonCumulative">
+                                    <input
+                                      type="checkbox"
+                                      id="isNonCumulative"
+                                      name="isNonCumulative"
+                                      checked={monHocData.isNonCumulative || false}
+                                      onChange={(e) => {
+                                        setMonHocData(prev => ({
+                                          ...prev,
+                                          isNonCumulative: e.target.checked
+                                        }));
+                                      }}
+                                    />
+                                    <span className="checkbox-label">Không tính vào tín chỉ tích lũy</span>
+                                  </label>
+                                </div>
+
+                                {creditError && (
+                                  <div className="validation-error">
+                                    {creditError}
+                                  </div>
+                                )}
+
+                                <div className="form-actions">
+                                  <button
+                                    className="confirm-btn"
+                                    onClick={handleMonHocCreate}
+                                    disabled={!isMonHocFormValid}
+                                  >
+                                    {editingMonHocId !== null ? "Cập nhật" : "Thêm"}
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Hiển thị danh sách môn học trong học kỳ */}
+                            {hocKy.monHocList.length > 0 ? (
+                              <div className="mon-hoc-list">
+                                <table className="mon-hoc-table">
+                                  <thead>
+                                    <tr>
+                                      <th>Mã môn học</th>
+                                      <th>Tên môn học</th>
+                                      <th>Loại hình</th>
+                                      <th>Số tín chỉ</th>
+                                      <th>Thao tác</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {hocKy.monHocList.map(monHoc => (
+                                      <tr key={monHoc.id} className={monHoc.isNonCumulative ? "non-cumulative-course" : ""}>
+                                        <td>{monHoc.maMon}</td>
+                                        <td>
+                                          {monHoc.tenMon}
+                                          {monHoc.isNonCumulative && (
+                                            <span className="non-cumulative-badge">*</span>
+                                          )}
+                                        </td>
+                                        <td>{monHoc.loaiHinh || '-'}</td>
+                                        <td>{monHoc.soTinChi}</td>
+                                        <td className="action-buttons">
+                                          <button
+                                            className="action-btn edit-btn"
+                                            onClick={() => handleEditMonHoc(hocKy.id, monHoc)}
+                                          >
+                                            Sửa
+                                          </button>
+                                          <button
+                                            className="action-btn delete-btn"
+                                            onClick={() => handleDeleteMonHoc(hocKy.id, monHoc.id)}
+                                          >
+                                            Xóa
+                                          </button>
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                  <tfoot>
+                                    <tr>
+                                      <td colSpan={3} style={{ textAlign: 'right', fontWeight: 'bold' }}>Tổng tín chỉ:</td>
+                                      <td colSpan={2} style={{ fontWeight: 'bold' }}>
+                                        {hocKy.monHocList.reduce((sum, mh) => sum + mh.soTinChi, 0)}
+                                      </td>
+                                    </tr>
+                                    <tr>
+                                      <td colSpan={3} style={{ textAlign: 'right' }}>Tích lũy:</td>
+                                      <td colSpan={2}>
+                                        {hocKy.monHocList.reduce((sum, mh) => mh.isNonCumulative ? sum : sum + mh.soTinChi, 0)}
+                                      </td>
+                                    </tr>
+                                    <tr>
+                                      <td colSpan={3} style={{ textAlign: 'right' }}>Không tích lũy:</td>
+                                      <td colSpan={2}>
+                                        {hocKy.monHocList.reduce((sum, mh) => mh.isNonCumulative ? sum + mh.soTinChi : sum, 0)}
+                                      </td>
+                                    </tr>
+                                  </tfoot>
+                                </table>
+                              </div>
+                            ) : (
+                              <div className="no-mon-hoc">Chưa có môn học nào</div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div className="modal-actions">
+                <button
+                  className="confirm-btn"
+                  onClick={() => setShowEditConfirm(true)}
+                  disabled={!isAddNganhFormValid()}
+                >
+                  Xác nhận
+                </button>
+                <button className="cancel-btn" onClick={handleCloseEditModal}>
+                  Hủy
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
       </AnimatePresence>
 
-{/* Edit Confirmation Modal */}
+      {/* Edit Confirmation Modal */}
       <AnimatePresence>
-  {showEditConfirm && (
-    <motion.div 
-      className="confirmation-overlay"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-    >
-      <motion.div 
-        className="confirmation-modal"
-        initial={{ scale: 0.9, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        exit={{ scale: 0.9, opacity: 0 }}
-        transition={{ type: "spring", damping: 20, stiffness: 300 }}
-      >
-        <h2 className="confirm-title">Bạn có xác nhận muốn lưu những thay đổi không?</h2>
-        
-        <div className="confirm-actions">
-          <button className="confirm-btn" onClick={handleConfirmEdit}>
-            Có
-          </button>
-          <button className="cancel-btn" onClick={() => setShowEditConfirm(false)}>
-            Không
-          </button>
-        </div>
-      </motion.div>
-    </motion.div>
-  )}
+        {showEditConfirm && (
+          <motion.div
+            className="confirmation-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div
+              className="confirmation-modal"
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              transition={{ type: "spring", damping: 20, stiffness: 300 }}
+            >
+              <h2 className="confirm-title">Bạn có xác nhận muốn lưu những thay đổi không?</h2>
+
+              <div className="confirm-actions">
+                <button className="confirm-btn" onClick={handleConfirmEdit}>
+                  Có
+                </button>
+                <button className="cancel-btn" onClick={() => setShowEditConfirm(false)}>
+                  Không
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
       </AnimatePresence>
       <AnimatePresence>
-      {showDeleteConfirm && (
-  <motion.div 
-    className="confirmation-overlay"
-    initial={{ opacity: 0 }}
-    animate={{ opacity: 1 }}
-    exit={{ opacity: 0 }}
-  >
-    <motion.div 
-      className="confirmation-modal"
-      initial={{ scale: 0.9, opacity: 0 }}
-      animate={{ scale: 1, opacity: 1 }}
-      exit={{ scale: 0.9, opacity: 0 }}
-      transition={{ type: "spring", damping: 20, stiffness: 300 }}
-    >
-      <h2 className="confirm-title">Bạn có chắc chắn muốn xóa ngành học này?</h2>
-      
-      <div className="confirm-actions" style={{ justifyContent: 'space-between', gap: '20px' }}>
-        <button className="confirm-btn" onClick={confirmDeleteNganh}>
-          Có
-        </button>
-        <button className="cancel-btn" onClick={() => setShowDeleteConfirm(false)}>
-          Không
-        </button>
-      </div>
-    </motion.div>
-  </motion.div>
-)}
+        {showDeleteConfirm && (
+          <motion.div
+            className="confirmation-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div
+              className="confirmation-modal"
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              transition={{ type: "spring", damping: 20, stiffness: 300 }}
+            >
+              <h2 className="confirm-title">Bạn có chắc chắn muốn xóa ngành học này?</h2>
+
+              <div className="confirm-actions" style={{ justifyContent: 'space-between', gap: '20px' }}>
+                <button className="confirm-btn" onClick={confirmDeleteNganh}>
+                  Có
+                </button>
+                <button className="cancel-btn" onClick={() => setShowDeleteConfirm(false)}>
+                  Không
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
       </AnimatePresence>
 
       {/* Add this dropdown menu component right before the modals */}
@@ -2839,14 +2954,14 @@ const handleCloseEditModal = () => {
 
       {/* Add this modal to your render method */}
       {showViewModal && (
-        <ViewMajorModal 
-          isOpen={showViewModal} 
+        <ViewMajorModal
+          isOpen={showViewModal}
           onClose={() => {
             setShowViewModal(false);
             setCurrentMajorData(null); // Reset khi đóng
             setCurrentMajorDetails(null); // Reset khi đóng
-          }} 
-          majorData={currentMajorData} 
+          }}
+          majorData={currentMajorData}
           majorDetails={currentMajorDetails} // <-- Truyền dữ liệu chi tiết
         />
       )}
@@ -2854,4 +2969,4 @@ const handleCloseEditModal = () => {
   );
 };
 
-export default QuanLyMonHoc;  
+export default QuanLyMonHoc;

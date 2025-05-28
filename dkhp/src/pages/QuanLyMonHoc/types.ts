@@ -1,8 +1,14 @@
 // Course types definition
 
+export interface CourseCategory {
+  id: number;
+  name: string;
+  created_at?: string;
+}
+
 export interface Course {
   id: number;
-  code: string;
+  course_code: string;
   title: string;
   credits: number;
   description?: string;
@@ -15,13 +21,6 @@ export interface Course {
   created_at?: string;
   updated_at?: string;
   type?: string;
-  department?: string;
-}
-
-export interface CourseCategory {
-  id: number;
-  name: string;
-  created_at?: string;
 }
 
 export interface CourseOffering {
