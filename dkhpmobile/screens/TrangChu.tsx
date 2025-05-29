@@ -3,14 +3,15 @@ import { View, Text, StyleSheet, Image, TouchableOpacity, ScrollView, StyleProp,
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
 import CalendarStrip from 'react-native-calendar-strip';
-import { useNavigation } from '@react-navigation/native';
-import { NavigationProp } from '@react-navigation/native';
+import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { useAuth } from '../src/api/context/AuthContext'; // Import useAuth hook
 
 // Định nghĩa kiểu dữ liệu cho navigation
 type RootStackParamList = {
   TrangChu: undefined;
   'Đăng Ký': { screen?: string, params?: any };
+  'Lịch Học': undefined;
+  'Đăng Ký Môn': undefined;
   'Cá Nhân': { screen?: string, params?: any };
   DanhSachMonHocdangky: undefined;
 };
@@ -200,34 +201,27 @@ const TrangChu = () => {
     
     return styles;
   };
-
   // Hàm xử lý chuyển đến màn hình chương trình khung
   const navigateToChuongTrinhKhung = () => {
     navigation.navigate('Đăng Ký', { 
       screen: 'ChuongTrinhKhung' 
     });
   };
-
   // Hàm xử lý chuyển đến màn hình đăng ký học phần
   const navigateToDangKyHocPhan = () => {
     navigation.navigate('Đăng Ký', { 
-      screen: 'DangKyHocPhan' 
+      screen: 'DangKyHocPhanMain' 
     });
-  };
-
-  // Hàm xử lý chuyển đến màn hình danh sách môn học đã đăng ký
+  };  // Hàm xử lý chuyển đến màn hình danh sách môn học đã đăng ký
   const navigateToDanhSachMonHocdangky = () => {
-    // Navigate to the DanhSachMonHocdangky screen inside the DangKy stack
-    navigation.navigate('Đăng Ký', { 
-      screen: 'DanhSachMonHocdangky' 
-    });
+    // Navigate directly to the Đăng Ký Môn tab
+    navigation.navigate('Đăng Ký Môn');
   };
 
   // Hàm xử lý chuyển đến màn hình thời khóa biểu
   const navigateToCalendar = () => {
-    navigation.navigate('Cá Nhân', { 
-      screen: 'Calendar' 
-    });
+    // Navigate directly to the Lịch Học tab
+    navigation.navigate('Lịch Học');
   };
 
   // Hàm xử lý chuyển đến màn hình thông báo

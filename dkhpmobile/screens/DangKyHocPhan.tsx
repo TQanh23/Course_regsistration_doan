@@ -13,8 +13,9 @@ import {
   Platform
 } from 'react-native';
 import Icon from '@expo/vector-icons/Ionicons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, CompositeNavigationProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
+import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { Picker } from '@react-native-picker/picker';
 import courseService, { 
   CourseOfferingModel, 
@@ -24,17 +25,28 @@ import courseService, {
 } from '../src/api/services/courseService';
 import { registrationService } from '../src/api/services/registrationService';
 
-// Define the navigation param list type
-type RootStackParamList = {
-  TrangChuScreen: undefined;
-  DangKyHocPhan: undefined;
+// Define the navigation param list types
+type RegistrationStackParamList = {
+  DangKyHocPhanMain: undefined;
+  ChuongTrinhKhung: undefined;
+  ThongTinLop: undefined;
+  ThongTinGiangVien: undefined;
   ThongBao: undefined;
-  DanhSachMonHocdangky: undefined; // Add this screen to the navigation type
-  // Add other screens as needed
 };
 
-// Define the navigation prop type for this screen
-type DangKyHocPhanNavigationProp = StackNavigationProp<RootStackParamList, 'DangKyHocPhan'>;
+type MainTabParamList = {
+  'Trang Chủ': undefined;
+  'Đăng Ký': undefined;
+  'Lịch Học': undefined;
+  'Đăng Ký Môn': undefined;
+  'Cá Nhân': undefined;
+};
+
+// Composite navigation prop that can handle both stack and tab navigation
+type DangKyHocPhanNavigationProp = CompositeNavigationProp<
+  StackNavigationProp<RegistrationStackParamList>,
+  BottomTabNavigationProp<MainTabParamList>
+>;
 
 const DangKyHocPhan = () => {
   // Navigation
@@ -177,6 +189,11 @@ const DangKyHocPhan = () => {
                 errorMsg = err.response.data.message;
                 if (errorMsg.toLowerCase().includes('schedule conflict')) {
                   Alert.alert('Trùng lịch học', errorMsg);
+                  return;
+                }
+                // Show specific alert if course is full
+                if (errorMsg.toLowerCase().includes('course is full')) {
+                  Alert.alert('Lớp đã đầy', 'Lớp học phần này đã đủ số lượng sinh viên. Vui lòng chọn lớp khác.');
                   return;
                 }
               }
@@ -411,14 +428,11 @@ const DangKyHocPhan = () => {
           <View style={styles.termDetailRow}>
             <Text style={styles.termDetailLabel}>Số lượng môn:</Text>
             <Text style={styles.termDetailValue}>{coursesResponse?.total_courses || 0}</Text>
-          </View>
-        </View>
-      )}
-
-      {/* Button to View Registered Courses */}
+          </View>        </View>
+      )}      {/* Button to View Registered Courses */}
       <TouchableOpacity 
         style={styles.viewRegisteredCoursesButton}
-        onPress={() => navigation.navigate('DanhSachMonHocdangky')}
+        onPress={() => navigation.navigate('Đăng Ký Môn')}
       >
         <Icon name="list" size={18} color="#0052CC" style={styles.viewRegisteredCoursesIcon} />
         <Text style={styles.viewRegisteredCoursesText}>Xem các môn đã đăng ký</Text>

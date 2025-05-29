@@ -46,6 +46,15 @@ function App() {
       <p className="read-the-docs">
         Click on the Vite and React logos to learn more
       </p>
+      <div>
+        <a href="https://vitejs.dev/guide/features.html" target="_blank">
+          Vite Documentation
+        </a>
+        <br />
+        <a href="https://reactjs.org/docs/getting-started.html" target="_blank">
+          React Documentation
+        </a>
+      </div>
     </>
   )
 }

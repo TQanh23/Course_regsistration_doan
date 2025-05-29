@@ -149,11 +149,6 @@ const App = () => {
       </View>
 
       {/* Registration Types */}
-<<<<<<< HEAD
-      {selectedSemester === 'HK2 2024 - 2025' ? (
-        <>
-          <View style={styles.registrationTypes}>
-=======
       <View style={styles.registrationTypes}>
         <TouchableOpacity 
           style={styles.typeButton}
@@ -283,7 +278,6 @@ const App = () => {
             </View>
 
             {/* Register Button */}
->>>>>>> a167de500bf61c9ceec4c662f3fa79d4ac5c5653
             <TouchableOpacity 
               style={styles.typeButton}
               onPress={() => {
@@ -339,7 +333,6 @@ const App = () => {
             </TouchableOpacity>
           </View>
 
-<<<<<<< HEAD
           {/* Chuyển ScrollView lên trên phần tiêu đề để bao gồm cả tiêu đề */}
           <ScrollView style={styles.courseList}>
             {/* Đưa tiêu đề vào trong ScrollView */}
@@ -358,7 +351,6 @@ const App = () => {
                     <Text style={[styles.headerCell, styles.requiredColumnCell]}>Bắt buộc</Text>
                     <Text style={[styles.headerCell, styles.prerequisiteColumnCell]}>Điều kiện tiên quyết</Text>
                   </View>
-=======
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -589,7 +581,6 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',  // Màu chữ trắng khi nút active
   },
 });
->>>>>>> a167de500bf61c9ceec4c662f3fa79d4ac5c5653
 
                   {/* Course Items */}
                   {[
