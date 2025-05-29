@@ -9,7 +9,7 @@ export interface Course {
   category_id?: number;
   category_name?: string;
   max_capacity: number;
-  is_non_cumulative: boolean;
+  // is_non_cumulative: boolean;
   active: boolean;
   created_by?: number;
   created_at?: string;

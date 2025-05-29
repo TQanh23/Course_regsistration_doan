@@ -838,12 +838,11 @@ const QuanLyMonHoc: React.FC = () => {
     setShowMonHocConfirm(false);
   };
 
-  // Create the course after confirmation
+  // Create or update the course after confirmation
   const handleMonHocCreate = async () => {
     if (!selectedBacDaiHocId || !selectedHocKyId) return;
 
     try {
-      // First create the course in the backend
       const courseData: Partial<Course> = {
         course_code: monHocData.maMon,
         title: monHocData.tenMon,
@@ -853,13 +852,29 @@ const QuanLyMonHoc: React.FC = () => {
         category_name: formData.khoa // Use the current department
       };
 
-      const response = await courseManagementApi.createCourse(courseData);
+      let response;
+      if (editingMonHocId !== null && editingHocKyId === selectedHocKyId) {
+        // Update existing course
+        const monHocToUpdate = hocKyByBacDaiHoc[selectedBacDaiHocId]
+          .find(hk => hk.id === selectedHocKyId)?.monHocList
+          .find(mh => mh.id === editingMonHocId);
+
+        if (!monHocToUpdate) {
+          throw new Error('Không tìm thấy môn học cần cập nhật');
+        }
+
+        response = await courseManagementApi.updateCourse(monHocToUpdate.id, courseData);
+      } else {
+        // Create new course
+        response = await courseManagementApi.createCourse(courseData);
+      }
 
       if (!response.success) {
-        throw new Error(response.error || 'Failed to create course');
+        throw new Error(response.error || 'Failed to create/update course');
       }
     } catch (err: any) {
       setError(err.message);
+      return; // Exit early on error
     } finally {
       setLoading(false);
     }
@@ -1291,40 +1306,44 @@ const QuanLyMonHoc: React.FC = () => {
   // Add these new handler functions for deletion
   const handleDeleteMonHoc = async (hocKyId: number, monHocId: number) => {
     if (!selectedBacDaiHocId) return;
-
-    // Gọi API xóa môn học trên backend
+    
     try {
-      await courseManagementApi.deleteCourse(monHocId);
-      // Sau khi xóa thành công trên backend, cập nhật lại state local như cũ
+      // Call the API to delete the course
+      const response = await courseManagementApi.deleteCourse(monHocId);
+      
+      if (!response.success) {
+      alert(response.error || 'Failed to delete course');
+        return;
+      }
 
       // Get the current list of semesters
       const hocKyList = [...(hocKyByBacDaiHoc[selectedBacDaiHocId] || [])];
       const hocKyIndex = hocKyList.findIndex(hk => hk.id === hocKyId);
-
+      
       if (hocKyIndex < 0) return;
-
-      // Filter out the course to delete
+      
+      // Filter out the deleted course
       const updatedMonHocList = hocKyList[hocKyIndex].monHocList.filter(
         mh => mh.id !== monHocId
       );
-
+      
       // Update the semester with the filtered course list
       const updatedHocKy = [...hocKyList];
       updatedHocKy[hocKyIndex] = {
         ...updatedHocKy[hocKyIndex],
         monHocList: updatedMonHocList
       };
-
+      
       // Update the state
       setHocKyByBacDaiHoc({
         ...hocKyByBacDaiHoc,
         [selectedBacDaiHocId]: updatedHocKy
       });
-
-      console.log(`Đã xóa môn học ID: ${monHocId} khỏi ${hocKyList[hocKyIndex].name}`);
-    } catch (error: any) {
-      // Xử lý lỗi nếu cần
-      alert('Xóa môn học thất bại: ' + (error?.message || 'Lỗi không xác định'));
+      
+      alert('Xóa môn học thành công');
+    } catch (error) {
+      console.error('Error deleting course:', error);
+      alert('Đã xảy ra lỗi khi xóa môn học');
     }
   };
 
@@ -1348,6 +1367,7 @@ const QuanLyMonHoc: React.FC = () => {
   const handleEditMonHoc = (hocKyId: number, monHoc: MonHoc) => {
     setEditingMonHocId(monHoc.id);
     setEditingHocKyId(hocKyId);
+    setSelectedHocKyId(hocKyId);
     setMonHocData({
       id: monHoc.id,
       maMon: monHoc.maMon,
