@@ -75,19 +75,9 @@ const getCourseById = async (req, res) => {
  */
 const createCourse = async (req, res) => {
   try {
-    const { 
-      code, 
-      title, 
-      description, 
-      credits, 
-      category_id, 
-      max_capacity,
-      is_non_cumulative
-    } = req.body;
-    
-    // Get admin ID from authenticated user
-    const adminId = req.user.id; // Assuming auth middleware puts user info in req.user
-    
+    const { code, title, description, credits, category_id, max_capacity, is_non_cumulative } = req.body;
+    const adminId = req.user.id;
+
     // Validate required fields
     if (!code || !title || !credits) {
       return res.status(400).json({
@@ -98,7 +88,7 @@ const createCourse = async (req, res) => {
 
     // Check if course already exists with the same code
     const [existingCourses] = await pool.query(
-      'SELECT * FROM courses WHERE code = ?',
+      'SELECT * FROM courses WHERE course_code = ?',
       [code]
     );
 
@@ -108,28 +98,31 @@ const createCourse = async (req, res) => {
         message: `Course with code ${code} already exists`
       });
     }
+
+    // Find the smallest available ID
+    const [allCourses] = await pool.query('SELECT id FROM courses ORDER BY id');
+    let newId = 1;
     
-    // Validate category if provided
-    if (category_id) {
-      const [categoryExists] = await pool.query(
-        'SELECT * FROM course_categories WHERE id = ?',
-        [category_id]
-      );
-      
-      if (categoryExists.length === 0) {
-        return res.status(400).json({
-          success: false,
-          message: `Category with ID ${category_id} does not exist`
-        });
+    // Find first gap in IDs or use next number after highest existing ID
+    if (allCourses.length > 0) {
+      for (let i = 0; i < allCourses.length; i++) {
+        if (allCourses[i].id !== i + 1) {
+          newId = i + 1;
+          break;
+        }
+        if (i === allCourses.length - 1) {
+          newId = allCourses[i].id + 1;
+        }
       }
     }
-    
-    // Insert the new course
+
+    // Insert the new course with the determined ID
     const [result] = await pool.query(
       `INSERT INTO courses 
-        (code, title, description, credits, category_id, max_capacity, created_by, is_non_cumulative) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        (id, course_code, title, course_description, credits, category_id, max_capacity, created_by, is_non_cumulative)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
+        newId,
         code, 
         title, 
         description || null, 
@@ -147,7 +140,7 @@ const createCourse = async (req, res) => {
       FROM courses c
       LEFT JOIN course_categories cc ON c.category_id = cc.id
       WHERE c.id = ?
-    `, [result.insertId]);
+    `, [newId]);
     
     res.status(201).json({
       success: true,
@@ -158,8 +151,7 @@ const createCourse = async (req, res) => {
     console.error('Error creating course:', error.message);
     res.status(500).json({
       success: false,
-      message: 'Server error while creating course',
-      error: error.message
+      message: 'Internal server error'
     });
   }
 };
@@ -199,7 +191,7 @@ const updateCourse = async (req, res) => {
     // Check if updating to a code that already exists (excluding this course)
     if (code) {
       const [codeExists] = await pool.query(
-        'SELECT * FROM courses WHERE code = ? AND id != ?',
+        'SELECT * FROM courses WHERE course_code = ? AND id != ?',
         [code, courseId]
       );
       
@@ -232,7 +224,7 @@ const updateCourse = async (req, res) => {
     const updateFields = [];
     
     if (code) {
-      updateFields.push('code = ?');
+      updateFields.push('course_code = ?');
       updateValues.push(code);
     }
     
@@ -242,7 +234,7 @@ const updateCourse = async (req, res) => {
     }
     
     if (description !== undefined) {
-      updateFields.push('description = ?');
+      updateFields.push('course_description = ?');
       updateValues.push(description);
     }
     
@@ -333,7 +325,7 @@ const deleteCourse = async (req, res) => {
     
     // Check if course has registrations
     const [registrations] = await pool.query(
-      'SELECT COUNT(*) as count FROM registrations WHERE course_id = ?',
+      'SELECT COUNT(*) as count FROM registrations r JOIN course_offerings co ON r.course_offering_id = co.id WHERE co.course_id = ?',
       [courseId]
     );
     

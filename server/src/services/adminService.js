@@ -175,14 +175,7 @@ class AdminService {
         return false;
       }
       
-      // Check if course has registrations
-      const [registrations] = await pool.query(
-        `SELECT COUNT(*) as count 
-        FROM registrations r
-        JOIN course_offerings co ON r.course_offering_id = co.id
-        WHERE co.course_id = ?`,
-        [id]
-      );
+
       
       if (registrations[0].count > 0) {
         // Soft delete by setting active=false
