@@ -42,7 +42,7 @@ export const courseManagementApi = {
   // Tạo khóa học mới
   createCourse: async (courseData: Partial<Course>): Promise<CourseResponse> => {
     const response: AxiosResponse<CourseResponse> = await apiClient.post(BASE_URL, {
-      code: courseData.code,
+      code: courseData.course_code,
       title: courseData.title,
       credits: courseData.credits,
       course_description: courseData.description || '',
@@ -50,9 +50,10 @@ export const courseManagementApi = {
       max_capacity: courseData.max_capacity || 50,
       is_non_cumulative: courseData.is_non_cumulative || false,
       active: true,
-      department: courseData.department || 'Công nghệ thông tin',
+      department: courseData.category_name || 'Công nghệ thông tin',
       type: courseData.type || 'regular'
     });
+    console.log('Create course response:', response.data);
     return response.data;
   },
 
@@ -60,7 +61,7 @@ export const courseManagementApi = {
   updateCourse: async (id: number, courseData: Partial<Course>): Promise<CourseResponse> => {
     const response: AxiosResponse<CourseResponse> = await apiClient.put(`${BASE_URL}/${id}`, {
       ...courseData,
-      department: courseData.department || 'Công nghệ thông tin',
+      department: courseData.category_name || 'Công nghệ thông tin',
       type: courseData.type || 'regular'
     });
     return response.data;
