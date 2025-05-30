@@ -81,7 +81,8 @@ const createCourse = async (req, res) => {
       description, 
       credits, 
       category_id, 
-      max_capacity
+      max_capacity,
+      is_non_cumulative
     } = req.body;
     
     // Get admin ID from authenticated user
@@ -126,8 +127,8 @@ const createCourse = async (req, res) => {
     // Insert the new course
     const [result] = await pool.query(
       `INSERT INTO courses 
-        (code, title, description, credits, category_id, max_capacity, created_by) 
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        (code, title, description, credits, category_id, max_capacity, created_by, is_non_cumulative) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         code, 
         title, 
@@ -135,7 +136,8 @@ const createCourse = async (req, res) => {
         credits, 
         category_id || null, 
         max_capacity || 30, 
-        adminId
+        adminId,
+        is_non_cumulative || false
       ]
     );
     
@@ -177,7 +179,8 @@ const updateCourse = async (req, res) => {
       credits, 
       category_id, 
       max_capacity,
-      active
+      active,
+      is_non_cumulative
     } = req.body;
     
     // Check if course exists
@@ -261,6 +264,11 @@ const updateCourse = async (req, res) => {
     if (active !== undefined) {
       updateFields.push('active = ?');
       updateValues.push(active);
+    }
+
+    if (is_non_cumulative !== undefined) {
+      updateFields.push('is_non_cumulative = ?');
+      updateValues.push(is_non_cumulative);
     }
     
     // If no fields to update
@@ -527,8 +535,7 @@ const getAvailableCourses = async (req, res) => {
     `;
     
     const queryParams = [];
-    
-    // Filter by term if provided
+      // Filter by term if provided
     if (termId) {
       query += ` AND at.id = ?`;
       queryParams.push(termId);
@@ -536,9 +543,6 @@ const getAvailableCourses = async (req, res) => {
       // Get current active term (where current date is between term dates)
       query += ` AND CURRENT_DATE() BETWEEN at.registration_start AND at.registration_end`;
     }
-    
-    // Make sure there are available seats
-    query += ` AND (co.max_enrollment - co.current_enrollment) > 0`;
     
     // Group by offering to avoid duplicates from multiple schedule entries
     query += ` GROUP BY co.id`;
@@ -632,9 +636,7 @@ const getAvailableCoursesBySemester = async (req, res) => {
       LEFT JOIN course_schedules cs ON cs.course_offering_id = co.id
       LEFT JOIN classrooms cl ON cs.classroom_id = cl.id
       LEFT JOIN professors p ON cs.professor_id = p.id
-      LEFT JOIN timetable_slots ts ON cs.timetable_slot_id = ts.id
-      WHERE c.active = TRUE AND at.id = ?
-      AND (co.max_enrollment - co.current_enrollment) > 0
+      LEFT JOIN timetable_slots ts ON cs.timetable_slot_id = ts.id      WHERE c.active = TRUE AND at.id = ?
       GROUP BY co.id
       ORDER BY c.course_code, co.section_number
     `, [semesterId]);
@@ -738,7 +740,7 @@ const getAvailableCoursesBySemester = async (req, res) => {
 };
 
 /**
- * Get active academic terms
+ * Get all academic terms (both active and inactive)
  * @route GET /api/courses/terms
  * @access Public
  */
@@ -746,7 +748,6 @@ const getActiveTerms = async (req, res) => {
   try {
     const [rows] = await pool.query(`
       SELECT * FROM academic_terms
-      WHERE CURRENT_DATE() <= registration_end
       ORDER BY start_date DESC
     `);
     

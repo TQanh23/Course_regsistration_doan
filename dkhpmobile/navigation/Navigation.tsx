@@ -36,6 +36,7 @@ export type HomeStackParamList = {
 
 export type RegistrationStackParamList = {
   DangKyHocPhanMain: undefined;
+  DangKyHocPhanTest: undefined;
   ChuongTrinhKhung: undefined;
   ThongTinLop: {
     subjectCode?: string;
@@ -198,7 +199,7 @@ const RegistrationStackNavigator = () => {
       />
       <RegistrationStack.Screen 
         name="ChuongTrinhKhung" 
-        component={ChuongTrinhKhung} 
+        component={ChuongTrinhKhung}
       />
       <RegistrationStack.Screen 
         name="ThongTinLop" 

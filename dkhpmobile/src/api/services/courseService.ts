@@ -65,7 +65,7 @@ export interface CourseScheduleItem {
 
 export interface AcademicTermModel {
   id: number;
-  name: string;
+  term_name: string;
   start_date: string;
   end_date: string;
   registration_start: string;
@@ -132,9 +132,8 @@ const courseService = {
       throw error;
     }
   },
-
   /**
-   * Get all available courses for registration in a specific semester
+   * Get all courses for registration in a specific semester (both available and unavailable)
    * @param semesterId - The ID of the semester to filter courses by
    * @returns A promise that resolves to a comprehensive response with term details and course offerings
    */
@@ -150,21 +149,20 @@ const courseService = {
       
       return response.data.data;
     } catch (error) {
-      console.error(`Error fetching available courses for semester ID ${semesterId}:`, error);
+      console.error(`Error fetching all courses for semester ID ${semesterId}:`, error);
       throw error;
     }
   },
-
   /**
-   * Get all active academic terms
-   * @returns A promise that resolves to an array of active academic terms
+   * Get all academic terms (both active and inactive)
+   * @returns A promise that resolves to an array of all academic terms
    */
   getActiveTerms: async (): Promise<AcademicTermModel[]> => {
     try {
       const response = await apiClient.get('/courses/terms');
       return response.data.data;
     } catch (error) {
-      console.error('Error fetching active terms:', error);
+      console.error('Error fetching all terms:', error);
       throw error;
     }
   },

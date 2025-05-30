@@ -138,21 +138,21 @@ const TrangChu = () => {
     return schedules.map((schedule, index) => (
       <View key={index} style={styles.scheduleCard}>
         <View style={styles.timeColumn}>
-          <Text style={styles.timeText}>{schedule.startTime}</Text>
-          <Text style={styles.timeText}>{schedule.endTime}</Text>
+          <Text style={styles.timeText}>{schedule.startTime || ''}</Text>
+          <Text style={styles.timeText}>{schedule.endTime || ''}</Text>
         </View>
         <View style={styles.scheduleContent}>
           <Text style={styles.subjectText}>
-            {schedule.subjectCode} - {schedule.subjectName}
+            {schedule.subjectCode || ''} - {schedule.subjectName || ''}
           </Text>
           <View style={styles.scheduleDetail}>
             <Text style={styles.detailText}>
-              Sáng thứ sáu, {schedule.startTime} - {schedule.endTime}, {schedule.room}
+              Sáng thứ sáu, {schedule.startTime || ''} - {schedule.endTime || ''}, {schedule.room || ''}
             </Text>
           </View>
           <View style={styles.scheduleDetail}>
             <Text style={styles.detailText}>
-              Giảng viên: {schedule.teacher}
+              Giảng viên: {schedule.teacher || ''}
             </Text>
           </View>
         </View>
@@ -276,7 +276,6 @@ const TrangChu = () => {
             <Text style={styles.userClass}>{userData.class}</Text>
           </View>
         </View>
-
         {/* Calendar và Schedule */}
         <View style={styles.calendarContainer}>
           <Text style={styles.dateHeader}>

@@ -61,7 +61,7 @@ const DanhSachMonHocdangky = () => {
       // Map the response to match expected state structure
       const formattedTerms = (response || []).map(term => ({
         id: term.id,
-        term_name: term.name // Assuming 'name' is the property in AcademicTermModel
+        term_name: term.term_name // Assuming 'term_name' is the correct property in AcademicTermModel
       }));
       setTerms(formattedTerms);
     } catch (error) {

@@ -109,7 +109,7 @@ const ThongTinCaNhan = () => {
             <View style={styles.nameSection}>
               <View style={styles.infoRow}>
                 <Text style={styles.label}>Họ tên: </Text>
-                <Text style={styles.boldValue}>{userInfo.name}</Text>
+                <Text style={styles.boldValue}>{userInfo.name || ''}</Text>
               </View>
               <View style={styles.infoRow}>
                 <Text style={styles.label}>Ngày sinh: </Text>
@@ -123,47 +123,47 @@ const ThongTinCaNhan = () => {
           <View style={styles.infoList}>
             <View style={styles.infoRow}>
               <Text style={styles.label}>Mã sinh viên: </Text>
-              <Text style={styles.boldValue}>{userInfo.studentId}</Text>
+              <Text style={styles.boldValue}>{userInfo.studentId || ''}</Text>
             </View>
 
             <View style={styles.infoRow}>
               <Text style={styles.label}>Loại hình đào tạo: </Text>
-              <Text style={styles.boldValue}>{userInfo.educationType}</Text>
+              <Text style={styles.boldValue}>{userInfo.educationType || ''}</Text>
             </View>
 
             <View style={styles.infoRow}>
               <Text style={styles.label}>Số điện thoại: </Text>
-              <Text style={styles.boldValue}>{userInfo.phone}</Text>
+              <Text style={styles.boldValue}>{userInfo.phone || ''}</Text>
             </View>
 
             <View style={styles.infoRow}>
               <Text style={styles.label}>Email: </Text>
-              <Text style={styles.boldValue}>{userInfo.email}</Text>
+              <Text style={styles.boldValue}>{userInfo.email || ''}</Text>
             </View>
 
             <View style={styles.infoRow}>
               <Text style={styles.label}>Hệ: </Text>
-              <Text style={styles.boldValue}>{userInfo.level}</Text>
+              <Text style={styles.boldValue}>{userInfo.level || ''}</Text>
             </View>
 
             <View style={styles.infoRow}>
               <Text style={styles.label}>Khoa: </Text>
-              <Text style={styles.boldValue}>{userInfo.faculty}</Text>
+              <Text style={styles.boldValue}>{userInfo.faculty || ''}</Text>
             </View>
 
             <View style={styles.infoRow}>
               <Text style={styles.label}>Ngành: </Text>
-              <Text style={styles.boldValue}>{userInfo.major}</Text>
+              <Text style={styles.boldValue}>{userInfo.major || ''}</Text>
             </View>
 
             <View style={styles.infoRow}>
               <Text style={styles.label}>Chuyên ngành: </Text>
-              <Text style={styles.boldValue}>{userInfo.specialization}</Text>
+              <Text style={styles.boldValue}>{userInfo.specialization || ''}</Text>
             </View>
 
             <View style={styles.infoRow}>
               <Text style={styles.label}>Lớp: </Text>
-              <Text style={styles.boldValue}>{userInfo.class}</Text>
+              <Text style={styles.boldValue}>{userInfo.class || ''}</Text>
             </View>
           </View>
         </View>
